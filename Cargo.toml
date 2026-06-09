@@ -7,7 +7,7 @@ description = "Data package for astroimsim ecosystem"
 
 [dependencies]
 
-astroimsim-geometry = "0.1.2"
+astroimsim-geometry = "0.1.3"
 plotpy = "1.22.0"
 egui = "0.34.3"
 rand = "0.10.1"
