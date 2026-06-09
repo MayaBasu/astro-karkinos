@@ -1,13 +1,13 @@
 [package]
 name = "astroimsim-data"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MIT"
 description = "Data package for astroimsim ecosystem."
 
 [dependencies]
 
-astroimsim-geometry = "0.1.4"
+astroimsim-geometry = "0.1.2"
 plotpy = "1.22.0"
 egui = "0.34.3"
 rand = "0.10.1"
