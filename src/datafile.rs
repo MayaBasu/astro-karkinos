@@ -1,22 +1,22 @@
-
-use crate::datagrids::{DATAGRID1D,DATAGRID2D};
-
 #[derive(Clone,Debug)]
-pub enum DATAGRID{
-    DATAGRID1D(DATAGRID1D),
-    DATAGRID2D(DATAGRID2D),
-}
-
 pub enum FILETYPE{
-    dat,
-    fits,
+    DAT(String), //type is delinator
+    FITS,
 }
 #[derive(Clone, Debug)]
 pub struct DataFile {
     pub name: &'static str,
     pub path: &'static str,
+    pub file_type: FILETYPE
 }
 
 impl DataFile{
-    
+    pub fn new(name:&'static str, path:&'static str, file_type: FILETYPE)-> DataFile{
+        DataFile{
+            name,
+            path,
+            file_type
+        }
+    }
+
 }

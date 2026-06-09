@@ -4,10 +4,11 @@ use std::time::Instant;
 use astroimsim_geometry::grid1d::{Location1D, Neighbors, GRID1D};
 use astroimsim_geometry::grid2d::GRID2D;
 use plotpy::{Curve, Plot};
-use crate::datafile::{DataFile, DATAGRID};
+use crate::datafile::{DataFile, FILETYPE};
+
 #[derive(Clone,Debug)]
 pub enum DataSource{
-    DatFile(DataFile,String), //data file, delineator
+    File(DataFile), //data file, delineator
     None
 }
 
@@ -46,13 +47,7 @@ impl DATAGRID1D {
         self.data[index].1.clone()
     }
 
-    pub fn load_data(mut self, plot: bool) {
-        let (path,delineator) = match self.source{
-            DataSource::DatFile(file, delineator) => {
-                println!("Loading file {:?} from {:?}", file.name, file.path);
-                (file.path,delineator)}
-            DataSource::None => {panic!("Can't load data from DataSource::None")}
-        };
+    fn load_dat(&mut self, path:&'static str, delineator:String, plot: bool) {
         assert_ne!(0, self.data.len(), "Loading data {:?} into would overwrite current data", self.label);
         println!("Loading {:?} into {:?}", path, self.label);
         let start = Instant::now();
@@ -112,6 +107,21 @@ impl DATAGRID1D {
             snapped_data.push((index, datum)) //TODO this must change to plot multiple
         }
         self.data = snapped_data;
+    }
+    
+    fn load_data(&mut self){
+        match &self.source{
+            DataSource::File(file) => {
+                match &file.file_type{
+                    FILETYPE::DAT(delinator) => {
+                        println!("Loading .dat file");
+                        self.load_dat(file.path,delinator.clone(),false)
+                    }
+                    FILETYPE::FITS => {panic!("unimplemented fits loading for 1D")}
+                }
+            }
+            DataSource::None => {panic!("Can't load data from Datasource::None")}
+        }
     }
 
     pub fn plot(&self) -> Vec<Vec<Vec<f64>>>{
