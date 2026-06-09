@@ -6,7 +6,7 @@ use serde::Serialize;
 use astroimsim_geometry::grid2d::{Location, GRID2D};
 use astroimsim_geometry::points::Point;
 use crate::units::Units;
-
+pub const spectral_resolution:usize = 1000;
 #[derive( Clone, Debug)]
 pub enum Spectrum{
     Full(f64,[f64;spectral_resolution], Units),
@@ -183,6 +183,8 @@ impl SourceList {
 
      */
 
+    /*
+
     pub fn apply_flatfield_illumination(&mut self,illumination:flatfield){
         let start = Instant::now();
         for source in &mut self.sources{
@@ -199,6 +201,8 @@ impl SourceList {
         }
         println!("Applied flatfield illumination to {:?} sources in {:?}ms",self.sources.len(),start.elapsed().as_millis())
     }
+
+     */
 
 
 }

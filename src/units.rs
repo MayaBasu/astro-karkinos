@@ -6,3 +6,15 @@ pub enum Units{
     Photons,
     Electrons,
 }
+
+
+impl Units{
+    pub fn convert(&self, end_unit:Units){
+        match self {
+            Units::Flux => {}
+            Units::AB_MAG => {}
+            Units::Photons => {}
+            Units::Electrons => {}
+        }
+    }
+}
