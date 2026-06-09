@@ -1,13 +1,13 @@
 
-mod plotting;
+pub mod plotting;
 
-mod point_source;
-mod poisson;
-mod psf;
-mod psf_grid;
+pub mod point_source;
+pub mod poisson;
+pub mod psf;
+pub mod psf_grid;
 
-mod units;
+pub mod units;
 
-mod datagrids;
-mod datafile;
+pub mod datagrids;
+pub mod datafile;
 
