@@ -1,66 +1,71 @@
-use std::fs::File;
-use std::io::Write;
-use std::time::Instant;
+use astroimsim_geometry::grid1d::GRID1D;
 use rand::distr::{Distribution, Uniform};
-use serde::Serialize;
 use astroimsim_geometry::grid2d::{Location, GRID2D};
 use astroimsim_geometry::points::Point;
-use crate::units::Units;
-pub const spectral_resolution:usize = 1000;
-#[derive( Clone, Debug)]
-pub enum Spectrum{
-    Full(f64,[f64;spectral_resolution], Units),
-    Bands(Vec<Bands>, Units),
+use crate::datagrids::{DataSource, DATAGRID1D};
+use crate::units::SpectrumUnits::{f_lambda, AbMagnitude};
+use crate::units::{SpectralDensityData, SpectrumUnits};
 
-}
-#[derive(Clone,Debug)]
-pub enum Bands{
-    FUV(f64),
-    NUV(f64),
-}
 
 #[derive(Debug,Clone)]
 pub struct PointSource {
     pub point: Point,
-    pub spectrum: Spectrum,
+    pub spectrum: DATAGRID1D,
 }
 
 impl PointSource {
-    pub fn new_full(point:Point, spectrum: [f64;spectral_resolution],luminosity:f64, units: Units) -> PointSource {
-        let spectrum = Spectrum::Full(luminosity,spectrum, units);
+    pub fn new(point: Point, spectrum: DATAGRID1D, ) -> PointSource {
         PointSource {
             point,
             spectrum
         }
     }
-    pub fn new_fuv_nuv(point:Point,fuv:f64,nuv:f64,units: Units ) -> PointSource{
-        let spectrum = Spectrum::Bands(vec![Bands::NUV(nuv),Bands::FUV(fuv)],units);
-        PointSource{
-            point,
-            spectrum
-        }
-    }
-    pub fn new(point:Point, spectrum: Spectrum) -> PointSource{
 
-        PointSource{
-            point,
-            spectrum,
+    //should add redshift
+
+    //https://www.jb.man.ac.uk/distance/frontiers/cmb/node7.htm
+
+    pub fn new_AB(label:&'static str,ab_magnitude:f64) -> DATAGRID1D {
+        let data_shape = (1,1);
+        let grid1d = GRID1D::new_empty(1.0,3000.0,11000.0,0.1,1.0);
+        println!("{:?}m{:?}",grid1d,grid1d.num());
+        let mut grid = DATAGRID1D::new_empty(grid1d, data_shape, label, f_lambda);
+        //assume grid markings are in angstroms
+        //TODO change toi units in grid step
+        //3.63E-20
+        for point in 0..grid.grid1d.num(){
+            let wavelength = grid.grid1d.location(point);
+            let value = SpectralDensityData{values:vec![0.0],units:AbMagnitude};
+
+            if point%100 ==0{
+                println!("{:?}",wavelength);
+                println!("{:?}",value.to_cgs(wavelength));
+                println!("val is {:?}", value.convert_to(&f_lambda,wavelength))
+
+
+            }
+
         }
+        grid
+
     }
 
-    pub fn fake_spectrum()-> [f64;spectral_resolution]{
-        let mut spectrum = [0.0;spectral_resolution];
-        let luminosities = Uniform::new(0.0,1.0).expect("Could not generate random luminosities in the given range");
+
+
+}
+/*
+
+pub fn new_generated() -> [f64; spectral_resolution] {
+        let mut spectrum = [0.0; spectral_resolution];
+        let luminosities = Uniform::new(0.0, 1.0).expect("Could not generate random luminosities in the given range");
         let mut rng = rand::rng();
-        for element in 0..spectrum.len(){
-            spectrum[element] = 1.0  + luminosities.sample(&mut rng);
+        for element in 0..spectrum.len() {
+            spectrum[element] = 1.0 + luminosities.sample(&mut rng);
         }
-        /*
-        Spectrum::Full(1.0,spectrum)
-
-         */
         spectrum
     }
+ */
+ /*
 
     pub fn fake_bands(units: Units) -> Spectrum{
         let luminosities = Uniform::new(0.0,1.0).expect("Could not generate random luminosities in the given range");
@@ -81,6 +86,8 @@ impl PointSource {
             }
         };
     }
+
+
 
 
 
@@ -206,4 +213,6 @@ impl SourceList {
 
 
 }
+
+     */
 

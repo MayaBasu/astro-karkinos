@@ -6,7 +6,7 @@ use uvex_fitrs::{Fits, FitsData, FitsDataArray, Hdu, HeaderValue};
 use astroimsim_geometry::coordinate_system::{CoordinateSystem, Coordinates};
 use astroimsim_geometry::grid2d::GRID2D;
 use astroimsim_geometry::points::Point;
-use crate::point_source::{PointSource, SourceList};
+//use crate::point_source::{PointSource, SourceList};
 
 #[derive(Debug,Clone,Serialize)]
 pub struct PSF {
