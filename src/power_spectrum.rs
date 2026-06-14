@@ -3,9 +3,10 @@ use std::io::BufReader;
 use std::time::Instant;
 use astroimsim_geometry::grid1d::GRID1D;
 use plotpy::{Curve, Plot};
+use rand_distr::Poisson;
 use crate::units::{DataTypes, Electrons, Photons, Response, SpectralDensity};
 
-pub struct Spectrum{
+pub struct PowerSpectrum {
     pub grid1d: GRID1D,
     pub data: Vec<(usize, f64)>, //a vector of values (point number on grid, data value at that point)
     pub units: SpectrumUnits,
@@ -14,7 +15,7 @@ pub struct Spectrum{
 }
 
 
-impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
+impl PowerSpectrum { //https://vitaly.neustroev.net/useful-info/conversions/
     fn convert_to_cgs(&mut self)  {
         let mut cgs_data = Vec::with_capacity(self.data.len());
         for (point,value) in &self.data{
@@ -52,8 +53,30 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
         self.data = converted_values;
     }
 
-    pub fn flat_AB(ab_mag:f64,grid:GRID1D)-> Spectrum{
+    pub fn flat_AB(ab_mag:f64,grid:GRID1D)-> PowerSpectrum {
 
+    }
+
+    pub fn photonify(&self){
+        pub fn photonify(&self,lambda:f64,duration:f64)-> Photons{
+            //simulate getting a random sample of a poisson distribution of photons
+            //during a duration specified in seconds
+            let photon_rates = self.convert_to(&SpectrumUnits::f_lambda,lambda);
+            let photon_rates = match photon_rates.units{
+                SpectrumUnits::f_lambda => {photon_rates.values}
+                _ =>{panic!("Unreachable")}
+            };
+            let mut photonified = Vec::with_capacity(self.values.len());
+            for photon_rate in photon_rates{
+                let average_photons  = photon_rate*duration;
+                let poisson_distribution = Poisson::new(average_photons).unwrap();
+                let photons: usize = poisson_distribution.sample(&mut rand::rng()) as usize;
+                photonified.push(photons)
+            }
+            Photons{
+                values:photonified,
+            }
+        }
     }
 
 

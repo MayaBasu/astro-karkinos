@@ -10,7 +10,8 @@ pub mod units;
 
 pub mod datagrids;
 
-mod spectrum;
+mod power_spectrum;
 mod data_sources;
 mod spectral_response;
+mod photonic_spectrum;
 

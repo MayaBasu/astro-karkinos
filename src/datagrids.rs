@@ -119,21 +119,7 @@ impl DATAGRID1D {
         self.data = snapped_data;
     }
 
-    fn load_data(&mut self,units: DataTypes){
-        match &self.source{
-            DataSource::File(file) => {
-                match &file.file_type{
-                    FILETYPE::DAT(delinator) => {
-                        println!("Loading .dat file");
-                        self.load_dat(file.path, delinator.clone(), false, units )
-                    }
-                    FILETYPE::FITS => {panic!("unimplemented fits loading for 1D")}
-                }
-            }
-            DataSource::None => {panic!("Can't load data from Datasource::None")}
-        }
-    }
-/*
+    
     pub fn plot(&self) -> Vec<Vec<Vec<f64>>>{
         let mut curves = Vec::new();
         for i in 1..self.data[0].1.len() {
