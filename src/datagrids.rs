@@ -3,16 +3,11 @@ use std::io::{BufRead, BufReader};
 use std::time::Instant;
 use astroimsim_geometry::grid1d::{Location1D, Neighbors, GRID1D};
 use astroimsim_geometry::grid2d::GRID2D;
-use eframe::wgpu::naga::SpecialTypes;
 use plotpy::{Curve, Plot};
 use crate::datafile::{DataFile, FILETYPE};
-use crate::units::{c_CGS, h_CGS, kB_CGS, SpectralDensityData, SpectrumUnits};
+use crate::units::{c_CGS, h_CGS, kB_CGS, DataTypes, Electrons, Photons, Response, SpectralDensity, SpectrumUnits};
 
 
-pub enum FakeCurve{
-    BlackBodyKelvin(f64),
-    FlatAB(SpectralDensityData)
-}
 #[derive(Clone,Debug)]
 pub enum DataSource{
     File(DataFile), //data file, delineator
@@ -22,10 +17,9 @@ pub enum DataSource{
 #[derive(Debug,Clone)]
 pub struct DATAGRID1D{
     pub grid1d: GRID1D,
-    pub data: Vec<(usize,SpectralDensityData)>, //a vector of values (point number on grid, data values at that point)
+    pub data: Vec<(usize, DataTypes)>, //a vector of values (point number on grid, data values at that point)
     pub data_shape: (usize,usize), //shape of data at each grid point
     pub label: &'static str,
-    pub units:SpectrumUnits,
     pub source: DataSource,
 }
 #[derive(Clone, Debug)]
@@ -41,22 +35,21 @@ pub struct DATAGRID2D{
 
 impl DATAGRID1D {
 
-    pub fn new_empty(grid1d:GRID1D,data_shape:(usize,usize),label:&'static str,units:SpectrumUnits)->DATAGRID1D{
+    pub fn new_empty(grid1d:GRID1D,data_shape:(usize,usize),label:&'static str)->DATAGRID1D{
         DATAGRID1D{
             grid1d,
             data:vec![],
             data_shape,
             label,
-            units,
             source: DataSource::None,
         }
     }
-    pub fn get_data(&self, index: usize) -> SpectralDensityData {
+    pub fn get_data(&self, index: usize) -> DataTypes {
         assert_eq!(self.data[index].0, index);
         self.data[index].1.clone()
     }
 
-    fn load_dat(&mut self, path:&'static str, delineator:String, plot: bool) {
+    fn load_dat(&mut self, path:&'static str, delineator:String, plot: bool,units: DataTypes) {
         assert_ne!(0, self.data.len(), "Loading data {:?} into would overwrite current data", self.label);
         println!("Loading {:?} into {:?}", path, self.label);
         let start = Instant::now();
@@ -110,22 +103,29 @@ impl DATAGRID1D {
         }
         println!("The first record is {:?} and the last is {:?}, snapping to grid: {:?}", data[0], data[data.len() - 1], self.grid1d);
         let mut snapped_data = Vec::new();
-        for datum in data {
-            
-            let location = datum[0];
+        for values in data {
+
+            let location = values[0];
             let index = self.grid1d.snap(location as f64);
-            snapped_data.push((index, SpectralDensityData {values:datum,units:self.units.clone()})) //TODO this must change to plot multiple
+            let united_data = match units{
+                DataTypes::SpectralDensity(SpectralDensity{values:_,ref units}) => {
+                    DataTypes::SpectralDensity(SpectralDensity{values,units:units.clone()})}
+                DataTypes::Photons(Photons{values:_}) => {panic!("Noooooo can't load to photons because we expect f64")}
+                DataTypes::Electrons(Electrons{values:_}) => {panic!("Noooooo can't load to electronsbecause we expect f64")}
+                DataTypes::Response(Response{values:_}) => { DataTypes::Response(Response{values})}
+            };
+            snapped_data.push((index,united_data)) //TODO this must change to plot multiple
         }
         self.data = snapped_data;
     }
 
-    fn load_data(&mut self){
+    fn load_data(&mut self,units: DataTypes){
         match &self.source{
             DataSource::File(file) => {
                 match &file.file_type{
                     FILETYPE::DAT(delinator) => {
                         println!("Loading .dat file");
-                        self.load_dat(file.path, delinator.clone(), false, /* SpectrumUnits */)
+                        self.load_dat(file.path, delinator.clone(), false, units )
                     }
                     FILETYPE::FITS => {panic!("unimplemented fits loading for 1D")}
                 }
@@ -162,7 +162,7 @@ impl DATAGRID1D {
         println!("{:?}",self.data);
         curves
     }
-    
+
  */
 
 
@@ -176,7 +176,7 @@ impl DATAGRID1D {
                 Location1D::TooHigh => {
                     println!("new gridding {:?},location is {:?}, too high", point, new_location);
                     self.data[self.data.len() - 1].1.clone()
-                    
+
                 }
                 Location1D::TooLow => {
                     println!("new gridding {:?},location is {:?}, too low", point, new_location);
@@ -192,11 +192,30 @@ impl DATAGRID1D {
                             let upper_delta = upper - new_location;
                             let lower_weight = lower_delta / (lower_delta + upper_delta);
                             let upper_weight = upper_delta / (lower_delta + upper_delta);
-                            let upper_data = self.get_data(upper_index);
-                            let lower_data = self.get_data(lower_index);
-                            assert_eq!(upper_data.units, lower_data.units,"Can not interpolate between points with data of different units. This shouldn't happen.... Something is suspicious with your grid.");
-                            let new_values = upper_data.values.iter().zip(lower_data.values.iter()).map(|(a, b)|
+                            //let upper_data = self.get_data(upper_index);
+                           // let lower_data = self.get_data(lower_index);
+
+                            let upper_data = match self.get_data(upper_index){
+                                DataTypes::SpectralDensity(SpectralDensity{values,units}) => {values}
+                                //DataTypes::Photons(Photons{values}) => {values}
+                                //DataTypes::Electrons(Electrons{values}) => {values}
+                                DataTypes::Response(Response{values}) => {values}
+                                _ => {panic!("types wrong to interpolate")}
+                            };
+
+                            let lower_data = match self.get_data(lower_index){
+                                DataTypes::SpectralDensity(SpectralDensity{values,units}) => {values}
+                                //DataTypes::Photons(Photons{values}) => {values}
+                                //DataTypes::Electrons(Electrons{values}) => {values}
+                                DataTypes::Response(Response{values}) => {values}
+                                _ => {panic!("types wrong to interpolate")}
+                            };
+                            //assert_eq!(upper_data.units, lower_data.units,"Can not interpolate between points with data of different units. This shouldn't happen.... Something is suspicious with your grid.");
+                            
+                            
+                            let new_values = upper_data.iter().zip(lower_data.iter()).map(|(a, b)|
                                 a * upper_weight + b * lower_weight).collect();
+                           
                             SpectralDensityData{values:new_values,units:upper_data.units.clone()}
                         }
                         Neighbors::One(snap) => { self.get_data(snap) }
@@ -225,7 +244,7 @@ impl DATAGRID1D {
                 }
             }
             FakeCurve::FlatAB(densities) => {
-                
+
             }
         }
     }

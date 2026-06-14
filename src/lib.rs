@@ -9,5 +9,8 @@ pub mod psf_grid;
 pub mod units;
 
 pub mod datagrids;
-pub mod datafile;
+
+mod spectrum;
+mod data_sources;
+mod spectral_response;
 

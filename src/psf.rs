@@ -50,6 +50,7 @@ impl PSF {
         let size_x:f64 = PSF::load(size.0, &primary_hdu);
         let size_y:f64 = PSF::load(size.1, &primary_hdu);
         let data = data.chunks(file.x_pixels).map(|i| i.to_vec()).collect();
+        println!("{:?}",data);
         PSF {
             path: file.path,
             data,

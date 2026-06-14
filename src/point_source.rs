@@ -4,7 +4,7 @@ use astroimsim_geometry::grid2d::{Location, GRID2D};
 use astroimsim_geometry::points::Point;
 use crate::datagrids::{DataSource, DATAGRID1D};
 use crate::units::SpectrumUnits::{f_lambda, AbMagnitude};
-use crate::units::{SpectralDensityData, SpectrumUnits};
+use crate::units::{SpectralDensity, SpectrumUnits};
 
 
 #[derive(Debug,Clone)]
@@ -35,7 +35,7 @@ impl PointSource {
         //3.63E-20
         for point in 0..grid.grid1d.num(){
             let wavelength = grid.grid1d.location(point);
-            let value = SpectralDensityData{values:vec![0.0],units:AbMagnitude};
+            let value = SpectralDensity{values:vec![0.0],units:AbMagnitude};
 
             if point%100 ==0{
                 println!("{:?}",wavelength);
