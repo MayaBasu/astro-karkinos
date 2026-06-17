@@ -80,53 +80,7 @@ impl PSF {
             Load::FromValue(value) => value
         }
     }
-    /*
 
-        pub fn downsample(&self, x_offset:f64, y_offset:f64, scale:f64)-> Vec<Vec<f32>>{
-            //scale is the wdith of one big pixel in terms of little pixels
-            //how many pixels from the lower corner is the corner of the psf
-            //TODO PSF must be square
-            assert_eq!(self.x_pixels % 2 , self.y_pixels % 2 );
-
-            match (self.x_pixels % 2 == 0 ){
-                true => {}
-                false => {
-                    //for an odd number of pixels in the psf the center of the psf and the center of the point
-                }
-            }
-
-        }
-
-     */
-    /*
-
-    pub fn calculate_pixel_locations(&self) {
-        let indexes: Vec<Vec<(usize,usize)>> = self.data.iter().enumerate().map(|(y_index,row)|
-            row.iter().enumerate().map(|(x_index, value)| (x_index,y_index)).collect::<Vec<(usize,usize)>>()).collect();
-    }
-
-     */
-    /*
-
-    pub fn convolve(&self,point_source: PointSource) -> SourceList{
-        let bottom_left_corner = (self.center.0 - self.size.0/2.0,self.center.1 - self.size.1/2.0);
-        let pixel_width = self.size.0/self.x_pixels as f64;
-        let pixel_height = self.size.1/self.y_pixels as f64;
-        let mut output_sources = SourceList::new_empty(self.x_pixels*self.y_pixels);
-        for y_index in 0..self.y_pixels{
-            for x_index in 0..self.x_pixels{
-                let x = bottom_left_corner.0 + pixel_width*(x_index as f64 + 0.5);
-                let y  = bottom_left_corner.1 + pixel_height*(y_index as f64 + 0.5);
-                let value = self.data[y_index][x_index] as f64 * point_source.luminosity ;
-                let source = PointSource::new(x,y,point_source.spectrum.clone(),value);
-                output_sources.add_source(source);
-
-            }
-        }
-        output_sources
-    }
-
-     */
 }
 
 

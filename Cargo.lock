@@ -238,6 +238,7 @@ name = "astroimsim-data"
 version = "0.1.2"
 dependencies = [
  "astroimsim-geometry",
+ "astroimsim-spectra",
  "eframe",
  "egui",
  "egui_plot",
@@ -257,6 +258,23 @@ dependencies = [
  "plotpy",
  "rand",
  "serde",
+]
+
+[[package]]
+name = "astroimsim-spectra"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bf17f14ed262e509ce51defa26b549006bcce28e39edd3b1b407df2b9437818"
+dependencies = [
+ "astroimsim-geometry",
+ "eframe",
+ "egui",
+ "egui_plot",
+ "plotpy",
+ "rand",
+ "rand_distr",
+ "serde",
+ "uvex-fitrs",
 ]
 
 [[package]]

@@ -11,4 +11,7 @@ mod power_spectrum;
 mod spectral_response;
 mod photonic_spectrum;
 mod detector;
+mod point_sources;
+mod spatial_effect;
+mod uvex;
 

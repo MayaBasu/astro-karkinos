@@ -110,36 +110,7 @@ impl PsfGrid{
 
 
 
-    pub fn interpolation_coefficients(&self, point:Point) -> ((usize,usize,usize,usize),(f64,f64,f64,f64),f64){
-        if self.valid == false{
-            panic!("Must validate Grid before attempting to interpolate")
-        };
-
-        match self.grid.find_corners(point.clone()){
-            Corners::Four(Q12, Q22, Q21, Q11) => { // using the wikipedia convention https://en.wikipedia.org/wiki/Bilinear_interpolation
-
-                let Q11point = self.grid.locate(Q11);
-                let Q22point = self.grid.locate(Q22);
-
-
-                let (x1,y1) = (Q11point.x,Q11point.y);
-                let (x2,y2) = (Q22point.x,Q22point.y);
-                let (x,y) = point.convert(&self.grid.coordinates).values();
-                let c11 = (x2-x)*(y2-y);
-                let c12 = (x2-x)*(y-y1);
-                let c21 = (x-x1)*(y2-y);
-                let c22 = (x-x1)*(y-y1);
-                println!("The coefficients are {:?}",(c11,c12,c21,c22));
-                let normalization = (x2-x1)*(y2-y1);
-                ((Q12, Q22, Q21, Q11),(c11,c12,c21,c22),normalization)
-
-            }
-            Corners::Two(Q1, Q2) => {((Q1, Q2, Q1, Q2),(1.0,1.0,1.0,1.0),1.0)} //TODO !!!!
-            Corners::One(Q1) => {((Q1, Q1, Q1, Q1),(1.0,1.0,1.0,1.0),1.0)}
-        }
-
-    }
-
+    
     pub fn grid_psf(&self, index:usize)-> Vec<Vec<f32>>{
         let (i, psf) = self.data[index].clone();
         assert_eq!(index,i);
