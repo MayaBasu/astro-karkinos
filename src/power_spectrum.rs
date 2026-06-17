@@ -3,15 +3,20 @@ use std::io::BufReader;
 use std::time::Instant;
 use astroimsim_geometry::grid1d::GRID1D;
 use plotpy::{Curve, Plot};
+use rand::distr::Distribution;
 use rand_distr::Poisson;
-use crate::units::{DataTypes, Electrons, Photons, Response, SpectralDensity};
+pub const kB_CGS:f64 = 1.380649 *10e-16; //erg K−1
+pub const h_CGS:f64 = 6.626069 *10e-27; //erg s
+pub const c_CGS:f64 = 2.997925 *10e10; // cm s−1
+//could have this as enum without struct and then have the units be in the parenthesis instead of the struct
 
+#[derive(Debug,Clone)]
 pub struct PowerSpectrum {
     pub grid1d: GRID1D,
     pub data: Vec<(usize, f64)>, //a vector of values (point number on grid, data value at that point)
     pub units: SpectrumUnits,
     pub label: &'static str,
-    pub dat_path: &'static str, //path to .dat file with data
+   // pub dat_path: &'static str, //path to .dat file with data
 }
 
 
@@ -41,7 +46,7 @@ impl PowerSpectrum { //https://vitaly.neustroev.net/useful-info/conversions/
         let mut converted_values = Vec::with_capacity(self.data.len());
         for (point, value) in &self.data {
             let lambda = self.grid1d.location(*point);
-            let converted_value  = match self.units {
+            let converted_value  = match unit {
                 SpectrumUnits::F_nu => {value},
                 SpectrumUnits::F_lambda => &{3.00 * 10e18 * value / (lambda.powi(2))},
                 SpectrumUnits::f_lambda => &{1.51 * 10f64.powi(26) * value / lambda},
@@ -53,33 +58,38 @@ impl PowerSpectrum { //https://vitaly.neustroev.net/useful-info/conversions/
         self.data = converted_values;
     }
 
-    pub fn flat_AB(ab_mag:f64,grid:GRID1D)-> PowerSpectrum {
-
-    }
-
-    pub fn photonify(&self){
-        pub fn photonify(&self,lambda:f64,duration:f64)-> Photons{
-            //simulate getting a random sample of a poisson distribution of photons
-            //during a duration specified in seconds
-            let photon_rates = self.convert_to(&SpectrumUnits::f_lambda,lambda);
-            let photon_rates = match photon_rates.units{
-                SpectrumUnits::f_lambda => {photon_rates.values}
-                _ =>{panic!("Unreachable")}
-            };
-            let mut photonified = Vec::with_capacity(self.values.len());
-            for photon_rate in photon_rates{
-                let average_photons  = photon_rate*duration;
-                let poisson_distribution = Poisson::new(average_photons).unwrap();
-                let photons: usize = poisson_distribution.sample(&mut rand::rng()) as usize;
-                photonified.push(photons)
-            }
-            Photons{
-                values:photonified,
-            }
+    pub fn flat_AB(ab_mag:f64,grid1d:GRID1D,label:&'static str)-> PowerSpectrum {
+        let units = SpectrumUnits::AbMagnitude;
+        let mut data = Vec::with_capacity(grid1d.num());
+        for point in 0..grid1d.num(){
+            data.push((point,ab_mag))
+        }
+        PowerSpectrum{
+            grid1d,
+            data,
+            units,
+            label,
         }
     }
 
-
+    pub fn black_body(temp_kelvin:f64, grid1d:GRID1D, label:&'static str)-> PowerSpectrum{
+        let units = SpectrumUnits::F_lambda;
+        let mut data = Vec::with_capacity(grid1d.num());
+        for point in 0..grid1d.num(){
+            let wavelength = grid1d.location(point);
+            let scale_factor = 2.0*std::f64::consts::PI*h_CGS*c_CGS.powi(2)/(wavelength.powi(5));
+            let exponent = h_CGS*c_CGS/(wavelength*kB_CGS*temp_kelvin);
+            let F_lambda = scale_factor*(1.0/(exponent.exp()-1.0));
+            data.push((point,F_lambda))
+        }
+        PowerSpectrum{
+            grid1d,
+            data,
+            units,
+            label,
+        }
+    }
+    
 }
 
 
@@ -91,4 +101,11 @@ pub enum SpectrumUnits {
     f_lambda, //Photons per cm^2 per second per angstrom
     AbMagnitude, //-2.5*log10(f_nu ) - 48.6 in CGS
     Janskys, // ??? who knows
+}
+
+
+#[derive(Clone, Debug)]
+pub struct Bands {
+    fuv:f64,
+    nuv:f64,
 }

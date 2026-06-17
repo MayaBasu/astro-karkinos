@@ -2,14 +2,8 @@ use astroimsim_geometry::coordinate_system::{CoordinateSystem, Coordinates};
 use astroimsim_geometry::grid2d::GRID2D;
 use astroimsim_data::point_source;
 
-pub mod poisson;
 pub mod psf;
 pub mod psf_grid;
-
-pub mod units;
-
-pub mod datagrids;
-pub mod datafile;
 
 
 fn main() {

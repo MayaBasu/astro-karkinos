@@ -1,29 +1,59 @@
 use astroimsim_geometry::grid1d::GRID1D;
-use rand::distr::{Distribution, Uniform};
-use astroimsim_geometry::grid2d::{Location, GRID2D};
 use astroimsim_geometry::points::Point;
-use crate::datagrids::{DataSource, DATAGRID1D};
-use crate::units::SpectrumUnits::{f_lambda, AbMagnitude};
-use crate::units::{SpectralDensity, SpectrumUnits};
-
+use crate::power_spectrum::{Bands, PowerSpectrum};
 
 #[derive(Debug,Clone)]
-pub struct PointSource {
+pub struct FullSpectrumPointSource {
     pub point: Point,
-    pub spectrum: DATAGRID1D,
+    pub spectrum: PowerSpectrum,
 }
 
-impl PointSource {
-    pub fn new(point: Point, spectrum: DATAGRID1D, ) -> PointSource {
-        PointSource {
+impl FullSpectrumPointSource {
+    pub fn new(point: Point, spectrum: PowerSpectrum, ) -> FullSpectrumPointSource {
+        FullSpectrumPointSource {
             point,
             spectrum
         }
     }
+    pub fn black_body(point: Point, grid: GRID1D, temp_kelvin: f64, label: &'static str) -> FullSpectrumPointSource {
+        FullSpectrumPointSource {
+            point,
+            spectrum: PowerSpectrum::black_body(temp_kelvin, grid, label)
+        }
+    }
+}
+
+
+#[derive(Debug,Clone)]
+pub struct BandsPointSource {
+    pub point: Point,
+    pub bands: Bands,
+}
+
+impl BandsPointSource{
+    pub fn new(point: Point, bands: Bands ) -> BandsPointSource {
+        BandsPointSource {
+            point,
+            bands
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
 
     //should add redshift
 
     //https://www.jb.man.ac.uk/distance/frontiers/cmb/node7.htm
+    /*
 
     pub fn new_AB(label:&'static str,ab_magnitude:f64) -> DATAGRID1D {
         let data_shape = (1,1);
@@ -50,9 +80,11 @@ impl PointSource {
 
     }
 
+     */
 
 
-}
+
+
 /*
 
 pub fn new_generated() -> [f64; spectral_resolution] {
