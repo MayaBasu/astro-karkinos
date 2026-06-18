@@ -11,11 +11,20 @@ use crate::psf::PSF;
 pub struct SpatialEffect {
     pub label: &'static str,
     pub grid: GRID2D,
-    pub(crate) data: Vec<Vec<f64>>, //data must be fractional - implement percent later?
-    fits_path: &'static str,
+    pub data: Vec<Vec<f64>>, //data must be fractional - implement percent later?
+    pub fits_path: &'static str,
 }
 
 impl SpatialEffect{
+    pub fn new_empty(label:&'static str, grid:GRID2D,fits_path:&'static str)-> SpatialEffect{
+        SpatialEffect{label,grid,data:vec![],fits_path}
+    }
+    
+    pub fn from_matrix(label:&'static str, grid:GRID2D,fits_path:&'static str,data:Vec<Vec<f64>>)-> SpatialEffect{
+        assert_eq!(grid.y_num,data.len());
+        for row in &data{ assert_eq!(grid.x_num, row.len()); }
+        SpatialEffect{label,grid,fits_path,data}
+    }
 
     pub fn load_data(&mut self){
         println!("Loading {:?} into {:?}",self.fits_path, self.label);
@@ -45,6 +54,7 @@ impl SpatialEffect{
        let q22 = self.get_data_at_grid_index(i22);
        (q11*c11 + q12*c12 + q21*c21 + q22*c22)/normalization
    }
+    
 }
 
 

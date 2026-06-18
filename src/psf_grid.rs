@@ -6,21 +6,28 @@ use crate::psf::{DataFile, PSF, Load};
 
 
 pub struct PsfGrid {
+    label:&'static str,
     data: Vec<(usize,PSF)>,
-    pub(crate) grid: GRID2D,
-    valid: bool
+    grid: GRID2D,
+    valid: bool,
+    directory_path:&'static str,
+    center_fits_keys:(&'static str, &'static str),
+
 }
 
 impl PsfGrid{
-    pub fn new(grid: GRID2D) -> PsfGrid{
+    pub fn new(label:&'static str,grid: GRID2D,directory_path:&'static str,center_fits_keys:(&'static str, &'static str),pixels:(usize, usize), size:(f64, f64)) -> PsfGrid{
         PsfGrid{
+            label,
             data: vec![],
             grid: grid,
             valid:false,
+            directory_path,
+            center_fits_keys
 
         }
     }
-    pub fn load_data_frames(&mut self, directory_path:&str, center_fits_keys:(&str, &str), pixels:(usize, usize), size:(f64, f64)){
+    pub fn load_data_frames(&mut self,  ){
         println!("Loading data frames into grid. This overwrites any data previously loaded");
         let mut data = vec![];
         let paths = fs::read_dir(directory_path).unwrap();
@@ -110,7 +117,7 @@ impl PsfGrid{
 
 
 
-    
+
     pub fn grid_psf(&self, index:usize)-> Vec<Vec<f32>>{
         let (i, psf) = self.data[index].clone();
         assert_eq!(index,i);
