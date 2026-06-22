@@ -32,7 +32,7 @@ pub enum Load{
 }
 
 impl PSF {
-    pub fn load_file(file: &str, center:(Load, Load), size:(Load, Load),grid:GRID2D) -> PSF {
+    pub fn load_file(file: PathBuf, center:(Load, Load), size:(Load, Load), x_num:usize, y_num:usize) -> PSF {
         println!("Loading {:?} into a DataFrame ",file);
         let fits = Fits::open(file.clone()).expect("Failed to open FITS file");
         let primary_hdu= fits.iter().next().expect("Couldn't find primary HDU");
@@ -41,21 +41,21 @@ impl PSF {
             _ => panic!("Could not unpack PSF data")
         }; //TODO add support for f64 etc
 
-        assert_eq!(shape[0], grid.x_num,"Diva down! Tried to load a file with data of the wrong x size"); //check that the data is the expected size
-        assert_eq!(shape[1], grid.y_num,"Diva down! Tried to load a file with data of the wrong y size");
+        assert_eq!(shape[0], x_num,"Diva down! Tried to load a file with data of the wrong x size"); //check that the data is the expected size
+        assert_eq!(shape[1], y_num,"Diva down! Tried to load a file with data of the wrong y size");
 
 
         let center_x:f64 = PSF::load(center.0, &primary_hdu);
         let center_y:f64 = PSF::load(center.1, &primary_hdu);
         let size_x:f64 = PSF::load(size.0, &primary_hdu);
         let size_y:f64 = PSF::load(size.1, &primary_hdu);
-        let data = data.chunks(grid.x_num).map(|i| i.to_vec()).collect();
+        let data = data.chunks(x_num).map(|i| i.to_vec()).collect();
         println!("{:?}",data);
         PSF {
-            path: file.parse().unwrap(),
+            path: file,
             data,
-            x_pixels: grid.x_num,
-            y_pixels: grid.y_num,
+            x_pixels: x_num,
+            y_pixels: y_num,
             center: Point::new(center_x,center_y,Coordinates::ABSOLUTE),
             size: (size_x,size_y),
         }

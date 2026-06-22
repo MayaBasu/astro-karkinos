@@ -3,8 +3,8 @@ use astroimsim_geometry::coordinate_system::CoordinateSystem;
 use astroimsim_geometry::grid2d::{Corners, GRID2D};
 use astroimsim_geometry::points::Point;
 use crate::psf::{DataFile, PSF, Load};
-use crate::spatial_effect::SpatialEffect;
 
+#[derive(Debug)]
 pub struct PsfGrid {
     label:&'static str,
     grid: GRID2D,
@@ -26,7 +26,7 @@ impl PsfGrid{
             center_fits_keys,
         }
     }
-    pub fn load_data_frames(&mut self, psf_grid:GRID2D){
+    pub fn load_data_frames(&mut self, x_num:usize,y_num:usize){
         println!("Loading data frames into grid. This overwrites any data previously loaded");
         let mut data = vec![];
         let paths = fs::read_dir(self.directory_path).unwrap();
@@ -37,10 +37,10 @@ impl PsfGrid{
             let path = path.unwrap().path();
 
             let frame = PSF::load_file(
-                self.directory_path,
+                path,
                 (Load::FromKey(self.center_fits_keys.0.to_string()), Load::FromKey(self.center_fits_keys.1.to_string())),
                 (Load::FromValue(self.grid.x_size),Load::FromValue(self.grid.y_size)),
-                psf_grid.clone(),
+                x_num,y_num,
             );
             let frame_index = frame.snap_to_grid(&self.grid);
             data.push((frame_index,frame))
