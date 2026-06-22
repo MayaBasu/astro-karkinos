@@ -10,8 +10,9 @@ fn main() {
     //point_source::PointSource::new_AB("sdf",1.0);
     let fuv_path = "/Users/mayabasu/Desktop/uvex_psf_files/FUV PSF";
     let fuv = empty_fuv();
-    let mut fuv_psf_grid = psf_grid::PsfGrid::new(fuv);
-    fuv_psf_grid.load_data_frames(fuv_path, ("XFLD", "YFLD"), (64, 64), (6.4, 6.4));
+    let mut fuv_psf_grid = psf_grid::PsfGrid::new("fuvpsf", fuv,fuv_path, ("XFLD", "YFLD"));
+    let psf_grid = GRID2D::new_empty((64,64),(1.0,1.0),(0.0,0.0),)
+    fuv_psf_grid.load_data_frames(fuv_path, , (64, 64), (6.4, 6.4));
     use rand_distr::{Binomial, Distribution};
 
     

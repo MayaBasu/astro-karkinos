@@ -6,6 +6,10 @@ use astroimsim_geometry::grid2d::{Location, GRID2D};
 use astroimsim_geometry::points::Point;
 use rand::distr::{Distribution, Uniform};
 use astroimsim_spectra::power_spectrum::PowerSpectrum;
+use astroimsim_spectra::spectral_response::SpectralResponseCurve;
+use egui::accesskit::Invalid::Spelling;
+use rand_distr::Poisson;
+use crate::point_sources::BandUnits::{AverageElectronFlux, Electrons};
 use crate::spatial_effect::SpatialEffect;
 
 #[derive(Debug,Clone)]
@@ -13,6 +17,17 @@ pub struct FullSpectrumPointSource {
     pub point: Point,
     pub spectrum: PowerSpectrum,
     pub scale: f64,
+}
+
+pub struct Bands {
+    pub fuv: f64,
+    pub nuv: f64,
+    pub units: BandUnits,
+}
+
+pub enum BandUnits{
+    AverageElectronFlux,
+    Electrons,
 }
 
 impl FullSpectrumPointSource {
@@ -28,6 +43,18 @@ impl FullSpectrumPointSource {
         self.scale *= scale
     }
 
+    pub fn apply_spectral_response_curve(&mut self, curve:&SpectralResponseCurve){
+        self.spectrum.apply_spectral_response(curve);
+    }
+    pub fn to_bands(&self,fuv_path:&SpectralResponseCurve,nuv_path:&SpectralResponseCurve)->Bands{
+        let mut fuv_spectrum = self.clone();
+        let mut nuv_spectrum = self.clone();
+        fuv_spectrum.apply_spectral_response_curve(fuv_path);
+        nuv_spectrum.apply_spectral_response_curve(nuv_path);
+        let fuv = fuv_spectrum.spectrum.total_average_photon_flux();
+        let nuv = fuv_spectrum.spectrum.total_average_photon_flux();
+        Bands{fuv,nuv,units:AverageElectronFlux}
+    }
 }
 #[derive(Debug)]
 pub struct FullSpectrumSourceList {
@@ -78,6 +105,18 @@ impl FullSpectrumSourceList {
         }
         println!("Applied spatial effect {:?} to {:?} sources in {:?} ms",effect.label,self.sources.len(),start.elapsed().as_millis())
     }
+}
 
 
+impl Bands{
+    pub fn poisson(&mut self){
+        let mut rng = rand::rng();
+        let fuv_poisson = Poisson::new(self.fuv as f64).unwrap();
+        let nuv_poisson = Poisson::new(self.nuv as f64).unwrap();
+        let fuv_electrons = fuv_poisson.sample(&mut rng);
+        let nuv_electrons = nuv_poisson.sample(&mut rng);
+        self.units = Electrons;
+        self.nuv = nuv_electrons;
+        self.fuv = fuv_electrons;
+    }
 }

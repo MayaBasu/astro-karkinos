@@ -3,12 +3,12 @@ use astroimsim_geometry::coordinate_system::CoordinateSystem;
 use astroimsim_geometry::grid2d::{Corners, GRID2D};
 use astroimsim_geometry::points::Point;
 use crate::psf::{DataFile, PSF, Load};
-
+use crate::spatial_effect::SpatialEffect;
 
 pub struct PsfGrid {
     label:&'static str,
-    data: Vec<(usize,PSF)>,
     grid: GRID2D,
+    data:Vec<(usize,PSF)>,
     valid: bool,
     directory_path:&'static str,
     center_fits_keys:(&'static str, &'static str),
@@ -16,42 +16,38 @@ pub struct PsfGrid {
 }
 
 impl PsfGrid{
-    pub fn new(label:&'static str,grid: GRID2D,directory_path:&'static str,center_fits_keys:(&'static str, &'static str),pixels:(usize, usize), size:(f64, f64)) -> PsfGrid{
+    pub fn new(label:&'static str,grid: GRID2D,directory_path:&'static str,center_fits_keys:(&'static str, &'static str)) -> PsfGrid{
         PsfGrid{
             label,
             data: vec![],
             grid: grid,
             valid:false,
             directory_path,
-            center_fits_keys
-
+            center_fits_keys,
         }
     }
-    pub fn load_data_frames(&mut self,  ){
+    pub fn load_data_frames(&mut self, psf_grid:GRID2D){
         println!("Loading data frames into grid. This overwrites any data previously loaded");
         let mut data = vec![];
-        let paths = fs::read_dir(directory_path).unwrap();
+        let paths = fs::read_dir(self.directory_path).unwrap();
         let mut counter = 0;
         for path in paths {
             println!("loading {:?}",path);
             counter += 1;
             let path = path.unwrap().path();
-            let (x_pixels,y_pixels) = pixels;
-            let data_file = DataFile{
-                description: counter.to_string(),
-                path,
-                x_pixels,
-                y_pixels,
-            };
-            let frame = PSF::load_file(data_file,
-                                       (Load::FromKey(center_fits_keys.0.to_string()), Load::FromKey(center_fits_keys.1.to_string())),
-                                       (Load::FromValue(size.0),Load::FromValue(size.0)));
+
+            let frame = PSF::load_file(
+                self.directory_path,
+                (Load::FromKey(self.center_fits_keys.0.to_string()), Load::FromKey(self.center_fits_keys.1.to_string())),
+                (Load::FromValue(self.grid.x_size),Load::FromValue(self.grid.y_size)),
+                psf_grid.clone(),
+            );
             let frame_index = frame.snap_to_grid(&self.grid);
             data.push((frame_index,frame))
         }
         data.sort_by_key(|x|x.0);
         self.data = data;
-        println!("Loaded {counter} files into a Grid Struct from {directory_path}");
+        println!("Loaded {counter} files into a Grid Struct from {:?}",self.directory_path);
         assert_eq!(counter,self.grid.num_points,"Loaded the wrong number of PSF files");
     }
 
@@ -89,7 +85,7 @@ impl PsfGrid{
 
         //  println!("To {:?}",(x,y));
 
-        let ((Q12, Q22, Q21, Q11),(c11,c12,c21,c22),normalization) = self.interpolation_coefficients(point.clone());
+        let ((Q12, Q22, Q21, Q11),(c11,c12,c21,c22),normalization) = self.grid.interpolation_coefficients(&point.clone());
 
         let q11 = self.data[Q11].clone();
         let q12 = self.data[Q12].clone();
@@ -126,3 +122,6 @@ impl PsfGrid{
     }
 
 }
+
+
+

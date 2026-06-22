@@ -1,11 +1,12 @@
 use std::time::Instant;
+use astroimsim_geometry::coordinate_system::Coordinates;
 use astroimsim_geometry::grid2d::{Location, GRID2D};
 use astroimsim_geometry::points::Point;
 use astroimsim_spectra::spectral_response::SpectralResponseCurve;
 
 use uvex_fitrs::{Fits, FitsData, FitsDataArray};
 use uvex_fitrs::{ Hdu};
-use crate::psf::PSF;
+use crate::psf::{DataFile, Load, PSF};
 
 #[derive(Clone,Debug)]
 pub struct SpatialEffect {
@@ -40,14 +41,13 @@ impl SpatialEffect{
         self.data = data;
 
     }
-
     pub fn get_data_at_grid_index(&self, grid_number:usize)->f64{
         let (x,y) = self.grid.xy_indices(grid_number);
         self.data[y][x]
     }
 
    pub fn get_data(&self,point:&Point)->f64{
-       let ((i12, i22, i21, i11),(c11,c12,c21,c22),normalization) = self.interpolation_coefficients(point);
+       let ((i12, i22, i21, i11),(c11,c12,c21,c22),normalization) = self.grid.interpolation_coefficients(point);
        let q11 = self.get_data_at_grid_index(i11);
        let q12 = self.get_data_at_grid_index(i12);
        let q21 = self.get_data_at_grid_index(i21);
