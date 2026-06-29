@@ -41,6 +41,23 @@ impl SpatialEffect{
         self.data = data;
 
     }
+
+
+    pub fn spawn_downsample(&self, grid2d: GRID2D)-> SpatialEffect{
+        let down_sampled_data:Vec<f64> =
+            (0..grid2d.num_points).map(|index|
+            {self.get_data(&grid2d.locate(index))}).collect();
+        let data:Vec<Vec<f64>> = down_sampled_data.chunks(grid2d.x_num)
+            .map(|v|v.to_vec()).collect();
+        SpatialEffect{
+            label: "downsampled data ", //TODO
+            grid: grid2d,
+            data,
+            fits_path: "N/A", //TODO: path enheritance
+        }
+    }
+
+
     pub fn get_data_at_grid_index(&self, grid_number:usize)->f64{
         let (x,y) = self.grid.xy_indices(grid_number);
         self.data[y][x]

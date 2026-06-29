@@ -31,6 +31,12 @@ pub enum Load{
     FromValue(f64)
 }
 
+
+pub enum FITSType{
+    thirtytwo,
+    sixtyfour,
+}
+
 impl PSF {
     pub fn load_file(file: PathBuf, center:(Load, Load), size:(Load, Load), x_num:usize, y_num:usize) -> PSF {
         println!("Loading {:?} into a DataFrame ",file);
@@ -41,6 +47,10 @@ impl PSF {
             _ => panic!("Could not unpack PSF data")
         }; //TODO add support for f64 etc
 
+        let normalization:f32 = data.iter().sum();
+        let data:Vec<f32> = data.iter().map(|x|x/normalization).collect();
+        println!("PSF has been normalized to {:?}",data.iter().sum::<f32>());
+
         assert_eq!(shape[0], x_num,"Diva down! Tried to load a file with data of the wrong x size"); //check that the data is the expected size
         assert_eq!(shape[1], y_num,"Diva down! Tried to load a file with data of the wrong y size");
 
@@ -50,7 +60,7 @@ impl PSF {
         let size_x:f64 = PSF::load(size.0, &primary_hdu);
         let size_y:f64 = PSF::load(size.1, &primary_hdu);
         let data = data.chunks(x_num).map(|i| i.to_vec()).collect();
-        println!("{:?}",data);
+      //  println!("{:?}",data);
         PSF {
             path: file,
             data,
@@ -114,6 +124,9 @@ impl SpatialEffect{
         let primary_hdu= fits.iter().next().expect("Couldn't find primary HDU");
         let (mut data,shape) = match primary_hdu.read_data() {
             FitsData::FloatingPoint64(FitsDataArray { shape, data }) => (data,shape),
+            FitsData::FloatingPoint32(FitsDataArray { shape, data }) => {
+                let data = data.iter().map(|x|*x as f64).collect();
+                (data,shape)},
             _ => {panic!("huh? Couldn't load FITS file")}
         };
         assert_eq!(shape[0],self.grid.x_num,"FITS data had the wrong width");

@@ -5,7 +5,8 @@ use astroimsim_geometry::grid1d::GRID1D;
 use astroimsim_geometry::grid2d::{Location, GRID2D};
 use astroimsim_geometry::points::Point;
 use rand::distr::{Distribution, Uniform};
-use astroimsim_spectra::power_spectrum::PowerSpectrum;
+use astroimsim_spectra::power_spectrum::{PowerSpectrum, SpectrumUnits};
+use astroimsim_spectra::power_spectrum::SpectrumUnits::f_lambda;
 use astroimsim_spectra::spectral_response::SpectralResponseCurve;
 use egui::accesskit::Invalid::Spelling;
 use rand_distr::Poisson;
@@ -19,12 +20,14 @@ pub struct FullSpectrumPointSource {
     pub scale: f64,
 }
 
+#[derive(Debug)]
 pub struct Bands {
     pub fuv: f64,
     pub nuv: f64,
     pub units: BandUnits,
 }
 
+#[derive(Debug)]
 pub enum BandUnits{
     AverageElectronFlux,
     Electrons,
@@ -32,7 +35,9 @@ pub enum BandUnits{
 
 impl FullSpectrumPointSource {
     pub fn flat_AB(point:Point,ab_mag:f64,grid1d: GRID1D)->FullSpectrumPointSource{
-        let spectrum = PowerSpectrum::flat_AB(ab_mag,grid1d," ");
+        let mut spectrum = PowerSpectrum::flat_AB(ab_mag,grid1d," ");
+            spectrum.convert_to(&SpectrumUnits::f_lambda);
+        //println!("spectrum is {:?}",spectrum);
         FullSpectrumPointSource{point,spectrum,scale:1.0}
     }
     pub fn new_from_spectrum(point: Point,spectrum:PowerSpectrum)->FullSpectrumPointSource{
@@ -44,15 +49,18 @@ impl FullSpectrumPointSource {
     }
 
     pub fn apply_spectral_response_curve(&mut self, curve:&SpectralResponseCurve){
+        self.spectrum.convert_to(&f_lambda);
         self.spectrum.apply_spectral_response(curve);
     }
-    pub fn to_bands(&self,fuv_path:&SpectralResponseCurve,nuv_path:&SpectralResponseCurve)->Bands{
+    pub fn to_bands(&self,fuv_path:&SpectralResponseCurve,nuv_path:&SpectralResponseCurve,area:f64)->Bands{
         let mut fuv_spectrum = self.clone();
         let mut nuv_spectrum = self.clone();
         fuv_spectrum.apply_spectral_response_curve(fuv_path);
         nuv_spectrum.apply_spectral_response_curve(nuv_path);
-        let fuv = fuv_spectrum.spectrum.total_average_photon_flux();
-        let nuv = fuv_spectrum.spectrum.total_average_photon_flux();
+        fuv_spectrum.spectrum.write_to_dat("fuv_spectrum", "fuv spectrum ");
+        nuv_spectrum.spectrum.write_to_dat("nuv_spectrum", "nuv spectrum");
+        let fuv = fuv_spectrum.spectrum.total_average_photon_flux(area);
+        let nuv = nuv_spectrum.spectrum.total_average_photon_flux(area);
         Bands{fuv,nuv,units:AverageElectronFlux}
     }
 }
