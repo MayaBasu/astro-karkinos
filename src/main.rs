@@ -6,7 +6,6 @@ pub mod point_sources;
 pub mod spatial_effect;
 pub mod test;
 
-pub mod prelude;
 
 
 pub fn main() {

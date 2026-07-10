@@ -235,7 +235,7 @@ dependencies = [
 
 [[package]]
 name = "astroimsim-data"
-version = "0.1.3"
+version = "0.1.5"
 dependencies = [
  "astroimsim-geometry",
  "astroimsim-spectra",
