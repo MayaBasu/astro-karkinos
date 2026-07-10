@@ -85,8 +85,13 @@ impl PsfGrid{
 
         //  println!("To {:?}",(x,y));
 
-        let ((Q12, Q22, Q21, Q11),(c11,c12,c21,c22),normalization) = self.grid.interpolation_coefficients(&point.clone());
 
+        let interpolation_data = self.grid.interpolation_coefficients(&point.clone());
+
+        /*
+        let psf_files = interpolation_data.corners
+            .iter()
+            .map(|index|self.data[index].clone()).collect();
         let q11 = self.data[Q11].clone();
         let q12 = self.data[Q12].clone();
         let q21 = self.data[Q21].clone();
@@ -106,6 +111,9 @@ impl PsfGrid{
                     (q11*c11 as f32 + q12*c12 as f32 + q21*c21 as f32 + q22*c22 as f32)/normalization as f32
                 }).collect();
         PSF::repack_data(interpolated_data)
+
+         */
+        vec![vec![]]
 
 
 

@@ -6,6 +6,7 @@ use uvex_fitrs::{Fits, FitsData, FitsDataArray, Hdu, HeaderValue};
 use astroimsim_geometry::coordinate_system::{CoordinateSystem, Coordinates};
 use astroimsim_geometry::grid2d::GRID2D;
 use astroimsim_geometry::points::Point;
+use astroimsim_geometry::grid2d::InterpolationData;
 //use crate::point_source::{PointSource, SourceList};
 
 #[derive(Debug,Clone,Serialize)]
@@ -141,12 +142,14 @@ impl SpatialEffect{
     }
 
     pub fn get_data(&self,point:&Point)->f64{
-        let ((i12, i22, i21, i11),(c11,c12,c21,c22),normalization) = self.grid.interpolation_coefficients(point);
-        let q11 = self.get_data_at_grid_index(i11);
-        let q12 = self.get_data_at_grid_index(i12);
-        let q21 = self.get_data_at_grid_index(i21);
-        let q22 = self.get_data_at_grid_index(i22);
-        (q11*c11 + q12*c12 + q21*c21 + q22*c22)/normalization
+        let interpolation_data = self.grid.interpolation_coefficients(point);
+        let sum:f64 = interpolation_data.corners
+            .iter()
+            .zip(interpolation_data.coefficients)
+            .map(|(point,coefficient)|{
+                self.get_data_at_grid_index(*point)*coefficient
+            }).sum();
+        sum/interpolation_data.normalization
     }
 
 }
