@@ -5,6 +5,8 @@ pub mod detector;
 pub mod point_sources;
 pub mod spatial_effect;
 pub mod test;
+mod convolve;
+
 pub mod prelude {
     pub use crate::{
         detector::*,

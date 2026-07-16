@@ -2,6 +2,7 @@ use std::fs;
 use astroimsim_geometry::coordinate_system::CoordinateSystem;
 use astroimsim_geometry::grid2d::{Corners, GRID2D};
 use astroimsim_geometry::points::Point;
+use egui::emath::interpolation_factor;
 use crate::psf::{DataFile, PSF, Load};
 
 #[derive(Debug)]
@@ -80,49 +81,71 @@ impl PsfGrid{
         }}
 
 
-    pub fn interpolated_psf(&self, point:&Point) -> Vec<Vec<f32>>{
+    pub fn interpolated_psf(&self, point:&Point) -> Vec<Vec<f64>>{
         //println!("Converting from {:?}", point);
 
         //  println!("To {:?}",(x,y));
+        let interpolation_data = self.grid.projected_interpolation_coefficients(&point.clone());
+
+        match interpolation_data.corners{
+            Corners::Four(Q12, Q22, Q21, Q11) => {
+                let q11 = self.data[Q11].clone();
+                let q12 = self.data[Q12].clone();
+                let q21 = self.data[Q21].clone();
+                let q22 = self.data[Q22].clone();
+
+                let c11 = interpolation_data.coefficients[0];
+                let c12 = interpolation_data.coefficients[1];
+                let c21 = interpolation_data.coefficients[2];
+                let c22 = interpolation_data.coefficients[3];
+
+                assert_eq!(q11.0,Q11);
+                assert_eq!(q12.0,Q12);
+                assert_eq!(q21.0,Q21);
+                assert_eq!(q22.0,Q22);
+
+                let interpolated_data:Vec<f64> =
+                    q11.1.data.into_iter().flatten().zip(
+                        q12.1.data.into_iter().flatten().zip(
+                            q21.1.data.into_iter().flatten().zip(
+                                q22.1.data.into_iter().flatten()))).map(
+                        |(q11,(q12,(q21,q22)))| {
+                            (q11*c11  + q12*c12  + q21*c21  + q22*c22 )/interpolation_data.normalization
+                        }).collect();
+                PSF::repack_data(interpolated_data)
+
+            }
+            Corners::Two(Q1, Q2) => {
+                let q1 = self.data[Q1].clone();
+                let q2 = self.data[Q2].clone();
+
+                let c1 = interpolation_data.coefficients[0];
+                let c2 = interpolation_data.coefficients[1];
 
 
-        let interpolation_data = self.grid.interpolation_coefficients(&point.clone());
-
-        /*
-        let psf_files = interpolation_data.corners
-            .iter()
-            .map(|index|self.data[index].clone()).collect();
-        let q11 = self.data[Q11].clone();
-        let q12 = self.data[Q12].clone();
-        let q21 = self.data[Q21].clone();
-        let q22 = self.data[Q22].clone();
-
-        assert_eq!(q11.0,Q11);
-        assert_eq!(q12.0,Q12);
-        assert_eq!(q21.0,Q21);
-        assert_eq!(q22.0,Q22);
-
-        let interpolated_data:Vec<f32> =
-            q11.1.data.into_iter().flatten().zip(
-                q12.1.data.into_iter().flatten().zip(
-                    q21.1.data.into_iter().flatten().zip(
-                        q22.1.data.into_iter().flatten()))).map(
-                |(q11,(q12,(q21,q22)))| {
-                    (q11*c11 as f32 + q12*c12 as f32 + q21*c21 as f32 + q22*c22 as f32)/normalization as f32
-                }).collect();
-        PSF::repack_data(interpolated_data)
-
-         */
-        vec![vec![]]
+                assert_eq!(q1.0,Q1);
+                assert_eq!(q2.0,Q2);
 
 
+                let interpolated_data:Vec<f64> =
+                            q1.1.data.into_iter().flatten().zip(
+                                q2.1.data.into_iter().flatten()).map(
+                        |(q1,q2)| {
+                            (q1*c1 + q2*c2 )/interpolation_data.normalization 
+                        }).collect();
+                PSF::repack_data(interpolated_data)
 
+            }
+            Corners::One(Q) => {
+                self.data[Q].clone().1.data
+            }
+        }
     }
 
 
 
 
-    pub fn grid_psf(&self, index:usize)-> Vec<Vec<f32>>{
+    pub fn grid_psf(&self, index:usize)-> Vec<Vec<f64>>{
         let (i, psf) = self.data[index].clone();
         assert_eq!(index,i);
         psf.data

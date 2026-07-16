@@ -8,7 +8,7 @@ description = "Data package for astroimsim ecosystem."
 
 [dependencies]
 
-astroimsim-geometry = "0.1.10"
+astroimsim-geometry = "0.1.14"
 plotpy = "1.22.0"
 egui = "0.34.3"
 rand = "0.10.1"
@@ -19,3 +19,6 @@ eframe = "0.34.3"
 uvex-fitrs = "0.0.1"
 astroimsim-spectra = "0.1.9"
 rayon = "1.12.0"
+ndarray="0.16.0"
+ndarray-conv = "0.6.1"
+convolve2d = "0.2.0"

@@ -7,12 +7,21 @@ use astroimsim_geometry::coordinate_system::{CoordinateSystem, Coordinates};
 use astroimsim_geometry::grid2d::GRID2D;
 use astroimsim_geometry::points::Point;
 use astroimsim_geometry::grid2d::InterpolationData;
+use ndarray::Array2;
+use ndarray_conv::{get_fft_processor, ConvExt, ConvFFTExt, ConvMode, PaddingMode};
+use std::time::{Duration, Instant};
+use convolve2d::{convolve2d, DynamicMatrix, Matrix};
+use eframe::wgpu::naga::ArraySize::Dynamic;
+use ndarray::prelude::*;
+
 //use crate::point_source::{PointSource, SourceList};
+use ndarray::prelude::*;
+use ndarray_conv::*;
 
 #[derive(Debug,Clone,Serialize)]
 pub struct PSF {
     pub path: PathBuf,
-    pub data: Vec<Vec<f32>>,
+    pub data: Vec<Vec<f64>>,
     pub x_pixels: usize,
     pub y_pixels: usize,
     pub center: Point,
@@ -44,13 +53,14 @@ impl PSF {
         let fits = Fits::open(file.clone()).expect("Failed to open FITS file");
         let primary_hdu= fits.iter().next().expect("Couldn't find primary HDU");
         let (mut data,shape) = match primary_hdu.read_data() {
-            FitsData::FloatingPoint32(FitsDataArray { shape, data }) => (data,shape),
+            FitsData::FloatingPoint32(FitsDataArray { shape, data }) => (data.iter().map(|x| *x as f64).collect(),shape),
+            FitsData::FloatingPoint64(FitsDataArray { shape, data }) => (data,shape),
             _ => panic!("Could not unpack PSF data")
         }; //TODO add support for f64 etc
 
-        let normalization:f32 = data.iter().sum();
-        let data:Vec<f32> = data.iter().map(|x|x/normalization).collect();
-        println!("PSF has been normalized to {:?}",data.iter().sum::<f32>());
+        let normalization:f64 = data.iter().sum();
+        let data:Vec<f64> = data.iter().map(|x|x/normalization).collect();
+        println!("PSF has been normalized to {:?}",data.iter().sum::<f64>());
 
         assert_eq!(shape[0], x_num,"Diva down! Tried to load a file with data of the wrong x size"); //check that the data is the expected size
         assert_eq!(shape[1], y_num,"Diva down! Tried to load a file with data of the wrong y size");
@@ -77,7 +87,7 @@ impl PSF {
     }
 
 
-    pub fn repack_data(flat_data: Vec<f32>) -> Vec<Vec<f32>>{
+    pub fn repack_data(flat_data: Vec<f64>) -> Vec<Vec<f64>>{
         flat_data.chunks(64).map(|i| i.to_vec()).collect()
     }
 
@@ -90,6 +100,15 @@ impl PSF {
                 }}
             Load::FromValue(value) => value
         }
+    }
+
+    pub fn convolve(&self, kernel:Vec<Vec<f64>>) -> Vec<f64>{
+        let flat_data:Vec<f64> = self.data.iter().flatten().map(|x|*x).collect();
+        let flat_kernel:Vec<f64> = kernel.iter().flatten().map(|x|*x).collect();
+        let data = DynamicMatrix::new(self.x_pixels, self.y_pixels, flat_data).unwrap();
+        let kernel = DynamicMatrix::new(kernel[0].len(), kernel.len(), flat_kernel).unwrap();
+        let output = convolve2d(&data, &kernel);
+        output.get_data().to_vec()
     }
 
 }

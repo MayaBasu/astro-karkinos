@@ -1,9 +1,9 @@
 use std::time::Instant;
 use astroimsim_geometry::coordinate_system::Coordinates;
-use astroimsim_geometry::grid2d::{Location, GRID2D};
+use astroimsim_geometry::grid2d::{Corners, Location, GRID2D};
 use astroimsim_geometry::points::Point;
 use astroimsim_spectra::spectral_response::SpectralResponseCurve;
-
+use rand_distr;
 use uvex_fitrs::{Fits, FitsData, FitsDataArray};
 use uvex_fitrs::{ Hdu};
 use crate::psf::{DataFile, Load, PSF};
@@ -20,12 +20,12 @@ impl SpatialEffect{
     pub fn new_empty(label:&'static str, grid:GRID2D,fits_path:&'static str)-> SpatialEffect{
         SpatialEffect{label,grid,data:vec![],fits_path}
     }
-    
     pub fn from_matrix(label:&'static str, grid:GRID2D,fits_path:&'static str,data:Vec<Vec<f64>>)-> SpatialEffect{
         assert_eq!(grid.y_num,data.len());
         for row in &data{ assert_eq!(grid.x_num, row.len()); }
         SpatialEffect{label,grid,fits_path,data}
     }
+
 
     pub fn load_data(&mut self,trim:usize){
         println!("Loading {:?} into {:?}",self.fits_path, self.label);
@@ -83,11 +83,18 @@ impl SpatialEffect{
    pub fn get_data(&self,point:&Point)->f64{
        let interpolation_data = self.grid.projected_interpolation_coefficients(point);
        //println!("{:?}",interpolation_data.corners.len());
-       let sum:f64 = interpolation_data.corners
-           .iter()
-           .zip(interpolation_data.coefficients)
+
+       let corners = match interpolation_data.corners{
+           Corners::Four(one, two, three, four) => {
+               vec![one,two,three,four]}
+           Corners::Two(one,two) => {vec![one,two]}
+           Corners::One(one) => {vec![one]}
+       };
+       let sum:f64 = corners
+           .into_iter().
+           zip(interpolation_data.coefficients)
            .map(|(point,coefficient)|{
-               self.get_data_at_grid_index(*point)*coefficient
+               self.get_data_at_grid_index(point)*coefficient
            }).sum();
        sum/interpolation_data.normalization
    }
