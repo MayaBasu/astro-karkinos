@@ -14,12 +14,22 @@ pub mod test;
 
 
 pub fn main() {
+    let blurred_directory = "slkjef";
+    let i = 1;
+    let std_in_pixels = 2.0;
+    let path = format!("{blurred_directory}/{i}_blurred_{std_in_pixels}.fits");
+    println!("{}", path);
+
+
+    /*
 
     let psf = PSF::load_file(PathBuf::from_str("/Users/mayabasu/Desktop/uvex_psf_files/FUV PSF/UVEX_FUV_PSF_1um_F222.fits").unwrap(),
                              (FromValue(0.0), FromValue(0.0)),(FromValue(1.0), FromValue(1.0)),64,64);
   //  println!("psf data {:?}",psf.data);
     psf.write_file("/Users/mayabasu/Desktop/blurred_psf/lskejf.fits",("XPOS","YPOS"))
     /*
+
+     */
     let kernel = vec![
         vec![9.0,-1.0,2.0],
         vec![-1.0,8.0,1.0],
