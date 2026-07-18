@@ -83,14 +83,23 @@ impl PSF {
 
 
     pub fn write_file(&self, path:&str,center_keys:(&str,&str)){
-        let data = self.data.clone().iter().map(|x|x.to_owned()).flatten().collect();
-        let mut primary_hdu = Hdu::new(&[self.x_pixels, self.y_pixels], data);
+
+        let data:Vec<f64> = self.data.clone().iter().map(|x|x.to_owned()).flatten().collect();
+        let data= data.iter().map(|x| *x).collect();
+        println!("Trying to write to {path}, {:?}",data);
+        let mut primary_hdu = Hdu::new(&[64, 64], data);
+        println!("Done making hdu");
         let (x,y) = self.center.to_absolute().values();
-        primary_hdu.insert(center_keys.0,x );
-        primary_hdu.insert(center_keys.1,y);
+        println!("x,y,{x} {y}");
+        primary_hdu.insert(center_keys.0,x.to_string().as_str() );
+        primary_hdu.insert(center_keys.1,y.to_string().as_str() );
+        println!("printed keys");
         //primary_hdu.insert(size_keys.0, self.size.0);
         //primary_hdu.insert(size_keys.1, self.size.1);
         Fits::create(path, primary_hdu).expect("Failed to create");
+        println!("done??")
+
+
     }
 
     pub fn snap_to_grid(&self, grid: &GRID2D) -> usize{
