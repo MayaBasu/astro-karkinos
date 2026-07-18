@@ -3,6 +3,7 @@ use astroimsim_geometry::coordinate_system::CoordinateSystem;
 use astroimsim_geometry::grid2d::{Corners, GRID2D};
 use astroimsim_geometry::points::Point;
 use egui::emath::interpolation_factor;
+use uvex_fitrs::{Fits, Hdu};
 use crate::psf::{DataFile, PSF, Load};
 
 #[derive(Debug)]
@@ -131,7 +132,7 @@ impl PsfGrid{
                             q1.1.data.into_iter().flatten().zip(
                                 q2.1.data.into_iter().flatten()).map(
                         |(q1,q2)| {
-                            (q1*c1 + q2*c2 )/interpolation_data.normalization 
+                            (q1*c1 + q2*c2 )/interpolation_data.normalization
                         }).collect();
                 PSF::repack_data(interpolated_data)
 
@@ -149,6 +150,30 @@ impl PsfGrid{
         let (i, psf) = self.data[index].clone();
         assert_eq!(index,i);
         psf.data
+
+    }
+
+
+    pub fn gaussian_blur(&self, blurred_directory: &'static str, std_in_pixels:f64){
+        let mut new_grid = PsfGrid::new("blurred grid", self.grid.clone(), blurred_directory, self.center_fits_keys.clone());
+        let kernel = convolve2d::kernel::gaussian(std_in_pixels.ceil() as usize*10,std_in_pixels);
+        let (x,y,vec) = kernel.into_parts();
+        let square_kernel = vec.chunks_exact(x).map(|x|x.to_vec()).collect();
+        for (i,psf) in &self.data{
+            let output = psf.convolve(&square_kernel);
+            let path = format!("{:?}/{i}_blurred_{std_in_pixels}.fits",self.directory_path);
+            let new_psf = PSF{
+                path: path.parse().unwrap(),
+                data: output.chunks_exact(psf.x_pixels).map(|x|x.to_vec()).collect(),
+                x_pixels: psf.x_pixels,
+                y_pixels: psf.y_pixels,
+                center: psf.center.clone(),
+                size: psf.size.clone()
+            };
+            new_grid.data.push((*i,new_psf));
+            psf.write_file(path.as_str(), self.center_fits_keys)
+
+        }
 
     }
 

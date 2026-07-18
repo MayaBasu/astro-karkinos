@@ -10,13 +10,11 @@ use astroimsim_geometry::grid2d::InterpolationData;
 use ndarray::Array2;
 use ndarray_conv::{get_fft_processor, ConvExt, ConvFFTExt, ConvMode, PaddingMode};
 use std::time::{Duration, Instant};
-use convolve2d::{convolve2d, DynamicMatrix, Matrix};
-use eframe::wgpu::naga::ArraySize::Dynamic;
-use ndarray::prelude::*;
 
-//use crate::point_source::{PointSource, SourceList};
-use ndarray::prelude::*;
-use ndarray_conv::*;
+use convolutions_rs::convolutions::*;
+use ndarray::*;
+use convolutions_rs::Padding;
+use convolve2d::{convolve2d, DynamicMatrix, Matrix};
 
 #[derive(Debug,Clone,Serialize)]
 pub struct PSF {
@@ -64,7 +62,7 @@ impl PSF {
 
         assert_eq!(shape[0], x_num,"Diva down! Tried to load a file with data of the wrong x size"); //check that the data is the expected size
         assert_eq!(shape[1], y_num,"Diva down! Tried to load a file with data of the wrong y size");
-
+        //TODO is this [x,y] or [y,x]
 
         let center_x:f64 = PSF::load(center.0, &primary_hdu);
         let center_y:f64 = PSF::load(center.1, &primary_hdu);
@@ -81,6 +79,20 @@ impl PSF {
             size: (size_x,size_y),
         }
     }
+
+
+
+    pub fn write_file(&self, path:&str,center_keys:(&str,&str)){
+        let data = self.data.clone().iter().map(|x|x.to_owned()).flatten().collect();
+        let mut primary_hdu = Hdu::new(&[self.x_pixels, self.y_pixels], data);
+        let (x,y) = self.center.to_absolute().values();
+        primary_hdu.insert(center_keys.0,x );
+        primary_hdu.insert(center_keys.1,y);
+        //primary_hdu.insert(size_keys.0, self.size.0);
+        //primary_hdu.insert(size_keys.1, self.size.1);
+        Fits::create(path, primary_hdu).expect("Failed to create");
+    }
+
     pub fn snap_to_grid(&self, grid: &GRID2D) -> usize{
         let index = grid.snap(self.center.clone());
         index
@@ -102,7 +114,11 @@ impl PSF {
         }
     }
 
-    pub fn convolve(&self, kernel:Vec<Vec<f64>>) -> Vec<f64>{
+    pub fn convolve(&self, kernel:&Vec<Vec<f64>>) -> Vec<f64>{
+        let kernel:Vec<Vec<f64>> = kernel
+            .iter()
+            .rev()
+            .map(|v|v.iter().map(|x|*x).rev().collect()).collect();
         let flat_data:Vec<f64> = self.data.iter().flatten().map(|x|*x).collect();
         let flat_kernel:Vec<f64> = kernel.iter().flatten().map(|x|*x).collect();
         let data = DynamicMatrix::new(self.x_pixels, self.y_pixels, flat_data).unwrap();
@@ -110,6 +126,11 @@ impl PSF {
         let output = convolve2d(&data, &kernel);
         output.get_data().to_vec()
     }
+
+
+
+
+
 
 }
 
