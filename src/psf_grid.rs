@@ -170,8 +170,8 @@ impl PsfGrid{
                 center: psf.center.clone(),
                 size: psf.size.clone()
             };
-            new_grid.data.push((*i,new_psf));
-            psf.write_file(path.as_str(), self.center_fits_keys)
+            new_grid.data.push((*i,new_psf.clone()));
+            new_psf.write_file(path.as_str(), self.center_fits_keys);
 
         }
 
