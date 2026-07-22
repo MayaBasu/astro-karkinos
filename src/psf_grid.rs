@@ -6,7 +6,7 @@ use egui::emath::interpolation_factor;
 use uvex_fitrs::{Fits, Hdu};
 use crate::psf::{DataFile, PSF, Load};
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct PsfGrid {
     label:&'static str,
     grid: GRID2D,
