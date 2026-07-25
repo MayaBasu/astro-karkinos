@@ -27,7 +27,7 @@ pub fn test_2d_interpolation() {
         matrix.push(row_vec)
     }
 
-    let data_grid = SpatialEffect::from_matrix("data grid", test_grid.clone(), "NA", matrix);
+    let data_grid = SpatialEffect::from_matrix("data grid".to_string(), test_grid.clone(), "NA".to_string(), matrix);
 
     println!("data grid is :{:?}",data_grid);
 

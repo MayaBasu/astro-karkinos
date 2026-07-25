@@ -82,7 +82,7 @@ impl PSF {
 
 
 
-    pub fn write_file(&self, path:&str,center_keys:(&str,&str)){
+    pub fn write_file(&self, path:&str,center_keys:(String,String)){
 
         let data:Vec<f64> = self.data.clone().iter().map(|x|x.to_owned()).flatten().collect();
         let data= data.iter().map(|x| *x).collect();

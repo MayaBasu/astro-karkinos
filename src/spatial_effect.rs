@@ -10,17 +10,17 @@ use crate::psf::{DataFile, Load, PSF};
 
 #[derive(Clone,Debug)]
 pub struct SpatialEffect {
-    pub label: &'static str,
+    pub label: String,
     pub grid: GRID2D,
     pub data: Vec<Vec<f64>>, //data must be fractional - implement percent later?
-    pub fits_path: &'static str,
+    pub fits_path: String,
 }
 
 impl SpatialEffect{
-    pub fn new_empty(label:&'static str, grid:GRID2D,fits_path:&'static str)-> SpatialEffect{
+    pub fn new_empty(label: String, grid:GRID2D,fits_path:String)-> SpatialEffect{
         SpatialEffect{label,grid,data:vec![],fits_path}
     }
-    pub fn from_matrix(label:&'static str, grid:GRID2D,fits_path:&'static str,data:Vec<Vec<f64>>)-> SpatialEffect{
+    pub fn from_matrix(label:String, grid:GRID2D,fits_path:String,data:Vec<Vec<f64>>)-> SpatialEffect{
         assert_eq!(grid.y_num,data.len());
         for row in &data{ assert_eq!(grid.x_num, row.len()); }
         SpatialEffect{label,grid,fits_path,data}
@@ -29,7 +29,7 @@ impl SpatialEffect{
 
     pub fn load_data(&mut self,trim:usize){
         println!("Loading {:?} into {:?}",self.fits_path, self.label);
-        let fits = Fits::open(self.fits_path).expect("Failed to open FITS file");
+        let fits = Fits::open(self.fits_path.clone()).expect("Failed to open FITS file");
         let raw_data_x = self.grid.x_num+2*trim;
         let raw_data_y = self.grid.y_num+2*trim;
         let primary_hdu= fits.iter().next().expect("Couldn't find primary HDU");
@@ -66,10 +66,10 @@ impl SpatialEffect{
         println!("BEFORE {:?}", self.data[0][0]);
         println!("After{:?}", data[0][0]);
         SpatialEffect{
-            label: "downsampled data ", //TODO
+            label: "downsampled data ".to_string(), //TODO
             grid: grid2d,
             data,
-            fits_path: "N/A", //TODO: path enheritance
+            fits_path: "N/A".to_string(), //TODO: path enheritance
         }
     }
 

@@ -8,17 +8,17 @@ use crate::psf::{DataFile, PSF, Load};
 
 #[derive(Debug,Clone)]
 pub struct PsfGrid {
-    label:&'static str,
+    label:String,
     grid: GRID2D,
     data:Vec<(usize,PSF)>,
     valid: bool,
-    directory_path:&'static str,
-    center_fits_keys:(&'static str, &'static str),
+    directory_path:String,
+    center_fits_keys:(String, String),
 
 }
 
 impl PsfGrid{
-    pub fn new(label:&'static str,grid: GRID2D,directory_path:&'static str,center_fits_keys:(&'static str, &'static str)) -> PsfGrid{
+    pub fn new(label:String,grid: GRID2D,directory_path:String,center_fits_keys:(String, String)) -> PsfGrid{
         PsfGrid{
             label,
             data: vec![],
@@ -31,7 +31,7 @@ impl PsfGrid{
     pub fn load_data_frames(&mut self, x_num:usize,y_num:usize){
         println!("Loading data frames into grid. This overwrites any data previously loaded");
         let mut data = vec![];
-        let paths = fs::read_dir(self.directory_path).unwrap();
+        let paths = fs::read_dir(self.directory_path.clone()).unwrap();
         let mut counter = 0;
         for path in paths {
             println!("loading {:?}",path);
@@ -154,14 +154,14 @@ impl PsfGrid{
     }
 
 
-    pub fn gaussian_blur(&self, blurred_directory: &'static str, std_in_pixels:f64){
-        let mut new_grid = PsfGrid::new("blurred grid", self.grid.clone(), blurred_directory, self.center_fits_keys.clone());
+    pub fn gaussian_blur(&self, blurred_directory:String, std_in_pixels:f64){
+        let mut new_grid = PsfGrid::new("blurred grid".to_string(), self.grid.clone(), blurred_directory.clone(), self.center_fits_keys.clone());
         let kernel = convolve2d::kernel::gaussian(std_in_pixels.ceil() as usize*10,std_in_pixels);
         let (x,y,vec) = kernel.into_parts();
         let square_kernel = vec.chunks_exact(x).map(|x|x.to_vec()).collect();
         for (i,psf) in &self.data{
             let output = psf.convolve(&square_kernel);
-            let path = format!("{blurred_directory}/{i}_blurred_{std_in_pixels}.fits");
+            let path = format!("{:?}/{i}_blurred_{std_in_pixels}.fits",blurred_directory);
             let new_psf = PSF{
                 path: path.parse().unwrap(),
                 data: output.chunks_exact(psf.x_pixels).map(|x|x.to_vec()).collect(),
@@ -171,7 +171,7 @@ impl PsfGrid{
                 size: psf.size.clone()
             };
             new_grid.data.push((*i,new_psf.clone()));
-            new_psf.write_file(path.as_str(), self.center_fits_keys);
+            new_psf.write_file(path.as_str(), self.center_fits_keys.clone());
 
         }
 

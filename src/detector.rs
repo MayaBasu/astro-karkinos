@@ -9,7 +9,7 @@ use std::fs;
 
 #[derive(Clone,Debug)]
 pub struct Detector {
-    pub label: &'static str,
+    pub label: String,
     pub grid: GRID2D,
     pub data: Vec<Vec<[f64;4]>>,
 }
