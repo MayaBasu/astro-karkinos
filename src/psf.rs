@@ -66,8 +66,10 @@ impl PSF {
 
         let center_x:f64 = PSF::load(center.0, &primary_hdu);
         let center_y:f64 = PSF::load(center.1, &primary_hdu);
+        println!("loaded center");
         let size_x:f64 = PSF::load(size.0, &primary_hdu);
         let size_y:f64 = PSF::load(size.1, &primary_hdu);
+        println!("loaded size");
         let data = data.chunks(x_num).map(|i| i.to_vec()).collect();
       //  println!("{:?}",data);
         PSF {
@@ -116,8 +118,12 @@ impl PSF {
         match thingy{
             Load::FromKey(Key) => {
                 match header.value(&Key).expect("failed to get key") {
-                    HeaderValue::RealFloatingNumber(value)=> *value,
-                    _ => panic!("could not unpack FITS header value")
+                    HeaderValue::CharacterString(i) => {println!("char"); 0.0}
+                    HeaderValue::Logical(i) => {println!("log"); 0.0}
+                    HeaderValue::IntegerNumber(i) => {println!("i"); 0.0}
+                    HeaderValue::RealFloatingNumber(i) => {println!("real"); 0.0}
+                    HeaderValue::ComplexIntegerNumber(k, j) => {println!("comp"); 0.0}
+                    HeaderValue::ComplexFloatingNumber(i, j) => {println!("comp"); 0.0}
                 }}
             Load::FromValue(value) => value
         }
