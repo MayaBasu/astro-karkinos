@@ -118,12 +118,10 @@ impl PSF {
         match thingy{
             Load::FromKey(Key) => {
                 match header.value(&Key).expect("failed to get key") {
-                    HeaderValue::CharacterString(i) => {println!("char"); 0.0}
-                    HeaderValue::Logical(i) => {println!("log"); 0.0}
-                    HeaderValue::IntegerNumber(i) => {println!("i"); 0.0}
-                    HeaderValue::RealFloatingNumber(i) => {println!("real"); 0.0}
-                    HeaderValue::ComplexIntegerNumber(k, j) => {println!("comp"); 0.0}
-                    HeaderValue::ComplexFloatingNumber(i, j) => {println!("comp"); 0.0}
+                    HeaderValue::CharacterString(string) => { string.parse().expect("FAILED TO PARSE string") }
+                    HeaderValue::RealFloatingNumber(i) => {*i}
+                    _ => {panic!("failed to parse header value")}
+
                 }}
             Load::FromValue(value) => value
         }
