@@ -27,7 +27,7 @@ pub fn main() {
                                                  vec![5.0,2.0,1.0],
                                                  vec![0.0,9.0,1.0]
                                             ]);
-    detector.apply_effect(effect,0);
+    detector.multiply_effect(effect,0);
     detector.write(0);
 
 

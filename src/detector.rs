@@ -110,11 +110,20 @@ impl Detector {
         }
         self.data= data;
     }
-    pub fn apply_effect(&mut self, effect:SpatialEffect,index:usize){
+    pub fn multiply_effect(&mut self, effect:SpatialEffect,index:usize){
         assert_eq!(effect.grid.num_points, self.grid.num_points, "Grids are not equal");
         for row in 0..self.grid.y_num{
             for column in 0..self.grid.x_num{
                 self.data[column][row][index] = self.data[column][row][index]*effect.data[column][row];
+            }
+        }
+    }
+
+    pub fn add_effect(&mut self, effect:SpatialEffect,index:usize){
+        assert_eq!(effect.grid.num_points, self.grid.num_points, "Grids are not equal");
+        for row in 0..self.grid.y_num{
+            for column in 0..self.grid.x_num{
+                self.data[column][row][index] = self.data[column][row][index]+effect.data[column][row];
             }
         }
     }
