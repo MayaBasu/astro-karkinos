@@ -161,7 +161,7 @@ impl PsfGrid{
         let square_kernel = vec.chunks_exact(x).map(|x|x.to_vec()).collect();
         for (i,psf) in &self.data{
             let output = psf.convolve(&square_kernel);
-            let path = format!("{:?}/{i}_blurred_{std_in_pixels}.fits",blurred_directory);
+            let path = format!("{blurred_directory}/{i}_blurred_{std_in_pixels}.fits");
             let new_psf = PSF{
                 path: path.parse().unwrap(),
                 data: output.chunks_exact(psf.x_pixels).map(|x|x.to_vec()).collect(),
