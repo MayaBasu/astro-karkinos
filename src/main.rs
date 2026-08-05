@@ -18,7 +18,7 @@ pub mod test;
 
 
 pub fn main() {
-    let grid = GRID2D::new_empty((3,3),(1.0,1.0),(0.0,0.0),(0.01),Coordinates::ABSOLUTE);
+    let grid = GRID2D::new_empty((3,3),(1.0,1.0),(0.0,0.0),0.01,Coordinates::ABSOLUTE);
     let mut detector = Detector::new("test".to_string(),grid.clone());
     detector.create_constant_background(2.0,1.0);
 

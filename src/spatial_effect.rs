@@ -82,7 +82,7 @@ impl SpatialEffect{
 
    pub fn get_data(&self,point:&Point)->f64{
        let interpolation_data = self.grid.projected_interpolation_coefficients(point);
-       //println!("{:?}",interpolation_data.corners.len());
+       //println!("{:?}",interpolation_data);
 
        let corners = match interpolation_data.corners{
            Corners::Four(one, two, three, four) => {

@@ -12,7 +12,6 @@ pub fn test_2d_interpolation() {
         (1.0, 0.0),
         (0.0, 0.0),
         "test coords",
-        "red",
     );
 
     let test_grid = GRID2D::new_empty((100, 100), (0.010, 0.010), (10.0, 10.0), 0.45, RELATIVE(coordinates));
