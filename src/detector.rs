@@ -8,6 +8,11 @@ use crate::psf_grid::PsfGrid;
 use std::fs;
 use crate::spatial_effect::SpatialEffect;
 
+pub enum EffectType{
+    Exposure(f64),
+    Once
+}
+
 #[derive(Clone,Debug)]
 pub struct Detector {
     pub label: String,
@@ -110,20 +115,28 @@ impl Detector {
         }
         self.data= data;
     }
-    pub fn multiply_effect(&mut self, effect:SpatialEffect,index:usize){
+    pub fn multiply_effect(&mut self, effect:SpatialEffect,index:usize, effect_type: EffectType){
         assert_eq!(effect.grid.num_points, self.grid.num_points, "Grids are not equal");
         for row in 0..self.grid.y_num{
             for column in 0..self.grid.x_num{
-                self.data[column][row][index] = self.data[column][row][index]*effect.data[column][row];
+                match effect_type{
+                    EffectType::Exposure(time) => {self.data[column][row][index] = self.data[column][row][index]*effect.data[column][row]*time;}
+                    EffectType::Once => {self.data[column][row][index] = self.data[column][row][index]*effect.data[column][row];}
+                }
+
             }
         }
     }
 
-    pub fn add_effect(&mut self, effect:SpatialEffect,index:usize){
+    pub fn add_effect(&mut self, effect:SpatialEffect,index:usize,effect_type: EffectType){
         assert_eq!(effect.grid.num_points, self.grid.num_points, "Grids are not equal");
         for row in 0..self.grid.y_num{
             for column in 0..self.grid.x_num{
-                self.data[column][row][index] = self.data[column][row][index]+effect.data[column][row];
+                match effect_type{
+                    EffectType::Exposure(time) => {self.data[column][row][index] = self.data[column][row][index]+effect.data[column][row]*time;}
+                    EffectType::Once => {self.data[column][row][index] = self.data[column][row][index]+effect.data[column][row];}
+                }
+
             }
         }
     }

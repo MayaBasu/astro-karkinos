@@ -3,9 +3,10 @@ use std::str::FromStr;
 use astroimsim_geometry::coordinate_system::Coordinates;
 use astroimsim_geometry::grid2d::GRID2D;
 use convolve2d::Matrix;
+
 use astroimsim_data::prelude::{Load, PSF};
 use astroimsim_data::psf::Load::FromValue;
-use crate::detector::Detector;
+use crate::detector::{Detector, EffectType};
 use crate::spatial_effect::SpatialEffect;
 
 pub mod psf;
@@ -27,7 +28,7 @@ pub fn main() {
                                                  vec![5.0,2.0,1.0],
                                                  vec![0.0,9.0,1.0]
                                             ]);
-    detector.multiply_effect(effect,0);
+    detector.multiply_effect(effect,0,EffectType::Once);
     detector.write(0);
 
 

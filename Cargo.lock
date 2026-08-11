@@ -235,7 +235,7 @@ dependencies = [
 
 [[package]]
 name = "astroimsim-data"
-version = "0.1.17"
+version = "0.1.18"
 dependencies = [
  "astroimsim-geometry",
  "astroimsim-spectra",
@@ -256,9 +256,9 @@ dependencies = [
 
 [[package]]
 name = "astroimsim-geometry"
-version = "0.1.16"
+version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3a87566d0cbba5aea25d1eec1140375c1cecb7a3bd1eff2d312b3d57625d903"
+checksum = "cd601e1bb7901f5dfd0a65bf3f702bb243b7572f3b2095fd3641cfe04d453670"
 dependencies = [
  "plotpy",
  "rand",
