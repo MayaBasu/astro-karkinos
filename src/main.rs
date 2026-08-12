@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use astroimsim_geometry::coordinate_system::Coordinates;
 use astroimsim_geometry::grid2d::GRID2D;
+use clap::Parser;
 use convolve2d::Matrix;
 
 use astroimsim_data::prelude::{Load, PSF};
@@ -15,6 +16,8 @@ pub mod detector;
 pub mod point_sources;
 pub mod spatial_effect;
 pub mod test;
+
+
 
 
 
@@ -56,6 +59,8 @@ pub fn main() {
 
 
 }
+
+
 
 
 
