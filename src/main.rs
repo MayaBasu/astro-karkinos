@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::str::FromStr;
-use astroimsim_geometry::coordinate_system::Coordinates;
+use astroimsim_geometry::coordinate_system::{CoordinateSystem, Coordinates};
 use astroimsim_geometry::grid2d::GRID2D;
 use clap::Parser;
 use convolve2d::Matrix;
@@ -8,6 +8,7 @@ use convolve2d::Matrix;
 use astroimsim_data::prelude::{Load, PSF};
 use astroimsim_data::psf::Load::FromValue;
 use crate::detector::{Detector, EffectType};
+use crate::psf_grid::PsfGrid;
 use crate::spatial_effect::SpatialEffect;
 
 pub mod psf;
@@ -22,6 +23,34 @@ pub mod test;
 
 
 pub fn main() {
+
+    let coord = CoordinateSystem{
+        x_axis: (1.0,0.0),
+        y_axis: (0.0,1.0),
+        center: (0.0, 0.0),
+        label: "fuv",
+    };
+    let mut grid = GRID2D::new_empty(
+        (18,18), //x_num
+        (0.2,0.2), //x_step_size
+        (-0.56, -0.06), //y_num
+        0.1, //y_step_size
+        Coordinates::RELATIVE(coord)
+    );
+    grid.label = "fuv".to_string();
+
+
+    let mut fuv_psf = PsfGrid::new(
+        "FUV PSF grid".to_string(),
+        grid,
+        "/Users/mayabasu/Desktop/uvex/FUV_PSF".to_string(),
+        ("XFLD".to_string(), "YFLD".to_string()));
+    fuv_psf.load_data_frames(64,64);
+
+
+
+    
+    /*
     let grid = GRID2D::new_empty((3,3),(1.0,1.0),(0.0,0.0),0.01,Coordinates::ABSOLUTE);
     let mut detector = Detector::new("test".to_string(),grid.clone());
     detector.create_constant_background(2.0,1.0);
@@ -33,6 +62,8 @@ pub fn main() {
                                             ]);
     detector.multiply_effect(effect,0,EffectType::Once);
     detector.write(0);
+    
+     */
 
 
 

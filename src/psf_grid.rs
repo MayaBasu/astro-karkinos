@@ -1,8 +1,9 @@
 use std::fs;
 use astroimsim_geometry::coordinate_system::CoordinateSystem;
-use astroimsim_geometry::grid2d::{Corners, GRID2D};
+use astroimsim_geometry::grid2d::{Corners, PlotPoint, GRID2D};
 use astroimsim_geometry::points::Point;
 use egui::emath::interpolation_factor;
+use plotpy::{Curve, Plot};
 use uvex_fitrs::{Fits, Hdu};
 use crate::psf::{DataFile, PSF, Load};
 
@@ -29,6 +30,9 @@ impl PsfGrid{
         }
     }
     pub fn load_data_frames(&mut self, x_num:usize,y_num:usize){
+
+
+
         println!("Loading data frames into grid. This overwrites any data previously loaded");
         let mut data = vec![];
         let paths = fs::read_dir(self.directory_path.clone()).unwrap();
@@ -44,13 +48,16 @@ impl PsfGrid{
                 (Load::FromValue(self.grid.x_size),Load::FromValue(self.grid.y_size)),
                 x_num,y_num,
             );
-            let frame_index = frame.snap_to_grid(&self.grid);
+
+            let frame_index =frame.snap_to_grid(&self.grid);
             data.push((frame_index,frame))
         }
         data.sort_by_key(|x|x.0);
         self.data = data;
         println!("Loaded {counter} files into a Grid Struct from {:?}",self.directory_path);
         assert_eq!(counter,self.grid.num_points,"Loaded the wrong number of PSF files");
+
+
     }
 
 
