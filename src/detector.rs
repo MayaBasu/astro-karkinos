@@ -96,6 +96,17 @@ impl Detector {
             }
         }
     }
+    
+    pub fn multiply_interpolated_effect(&mut self, effect:&SpatialEffect, index:usize){
+        for row in 0..self.grid.y_num {
+            for column in 0..self.grid.x_num {
+                let grid_number = self.grid.grid_number(column, row);
+                let location = self.grid.locate(grid_number);
+                let effect = effect.get_data(&location);
+                self.data[column][row][index] = self.data[column][row][index] * effect;
+            }
+        }
+    }
 
 }
 
