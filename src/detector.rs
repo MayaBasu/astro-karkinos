@@ -32,71 +32,27 @@ impl Detector {
 
     }
 
-    pub fn write(&mut self,label:usize){
+    pub fn write(&mut self, directory_path:String, label:usize){
 
 
         let width = self.data[0].len();
         let height = self.data.len();
         let shape = [width, height];
 
-        let mut fuv_counts_path = "/Users/mayabasu/Desktop/Output/fuv/testtt".to_string();
-            fuv_counts_path.push_str(label.to_string().as_str());
-        fuv_counts_path.push_str(".fits");
-
-        let mut nuv_counts_path = "/Users/mayabasu/Desktop/Output/nuv/testtt".to_string();
-            nuv_counts_path.push_str(label.to_string().as_str());
-        nuv_counts_path.push_str(".fits");
-
-        /*
-
-        let mut fuv_ave_path = "/Users/mayabasu/Desktop/Output/fuv/counts_".to_string();
-            fuv_ave_path.push_str(label.to_string().as_str());
-            fuv_ave_path.push_str(".fits");
-
-
-        let mut nuv_ave_path = "/Users/mayabasu/Desktop/Output/nuv/counts".to_string();
-            nuv_ave_path.push_str(label.to_string().as_str());
-                nuv_ave_path.push_str(".fits");
-
-
-
-
-        let fuv_ave:Vec<f64> = self.data.iter().flatten().map(|a|a[0]).collect();
-        let nuv_ave:Vec<f64> = self.data.iter().flatten().map(|a|a[1]).collect();
-
-         */
-
-
+        let mut fuv_path = directory_path.clone();
+        fuv_path.push_str(&format!("/fuv_{label}.fits"));
+        
+        let mut nuv_path = directory_path.clone();
+            nuv_path.push_str(&format!("/nuv_{label}.fits"));
+        
         let fuv_counts:Vec<f64> = self.data.iter().flatten().map(|a|a[0]).collect();
         let nuv_counts:Vec<f64> = self.data.iter().flatten().map(|a|a[1]).collect();
-
-
-
-
-        /*
-        let mut fuv_primary_hdu = Hdu::new(&shape, fuv_ave);
-        let mut nuv_primary_hdu = Hdu::new(&shape, nuv_ave);
-
-         */
-
+        
         let mut fuv_counts_primary_hdu = Hdu::new(&shape, fuv_counts);
         let mut nuv_counts_primary_hdu = Hdu::new(&shape, nuv_counts);
-
-
-        // Insert values in header later
-        //primary_hdu.insert("KEYSTR", "My string");
-        /*
-        println!("{:?}",fuv_ave_path);
-        Fits::create(fuv_ave_path, fuv_primary_hdu).expect("Failed to create");
-        Fits::create(nuv_ave_path, nuv_primary_hdu).expect("Failed to create");
-
-         */
-        Fits::create(fuv_counts_path, fuv_counts_primary_hdu).expect("Failed to create");
-        Fits::create(nuv_counts_path, nuv_counts_primary_hdu).expect("Failed to create");
-
-
-
-
+        
+        Fits::create(fuv_path, fuv_counts_primary_hdu).expect("Failed to create");
+        Fits::create(nuv_path, nuv_counts_primary_hdu).expect("Failed to create");
 
     }
 
@@ -115,7 +71,7 @@ impl Detector {
         }
         self.data= data;
     }
-    pub fn multiply_effect(&mut self, effect:SpatialEffect,index:usize, effect_type: EffectType){
+    pub fn multiply_effect(&mut self, effect:&SpatialEffect,index:usize, effect_type: EffectType){
         assert_eq!(effect.grid.num_points, self.grid.num_points, "Grids are not equal");
         for row in 0..self.grid.y_num{
             for column in 0..self.grid.x_num{
@@ -128,7 +84,7 @@ impl Detector {
         }
     }
 
-    pub fn add_effect(&mut self, effect:SpatialEffect,index:usize,effect_type: EffectType){
+    pub fn add_effect(&mut self, effect:&SpatialEffect,index:usize,effect_type: EffectType){
         assert_eq!(effect.grid.num_points, self.grid.num_points, "Grids are not equal");
         for row in 0..self.grid.y_num{
             for column in 0..self.grid.x_num{
