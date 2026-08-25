@@ -35,7 +35,7 @@ pub enum BandUnits{
 
 impl FullSpectrumPointSource {
     pub fn flat_AB(point:Point,ab_mag:f64,grid1d: GRID1D)->FullSpectrumPointSource{
-        let mut spectrum = PowerSpectrum::flat_AB(ab_mag,grid1d," ");
+        let mut spectrum = PowerSpectrum::flat_AB(ab_mag,grid1d,format!("flat ab {ab_mag}").to_string());
             spectrum.convert_to(&SpectrumUnits::f_lambda);
         //println!("spectrum is {:?}",spectrum);
         FullSpectrumPointSource{point,spectrum,scale:1.0}
