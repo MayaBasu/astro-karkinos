@@ -1,16 +1,18 @@
 use std::fs::File;
 use std::io::Write;
 use std::time::Instant;
-use astroimsim_geometry::grid1d::GRID1D;
-use astroimsim_geometry::grid2d::{Location, GRID2D};
-use astroimsim_geometry::points::Point;
+
 use rand::distr::{Distribution, Uniform};
-use astroimsim_spectra::power_spectrum::{PowerSpectrum, SpectrumUnits};
-use astroimsim_spectra::power_spectrum::SpectrumUnits::f_lambda;
-use astroimsim_spectra::spectral_response::SpectralResponseCurve;
+use crate::geometry::*;
 use egui::accesskit::Invalid::Spelling;
 use rand_distr::Poisson;
+use crate::grid1d::GRID1D;
+use crate::grid2d::{Location, GRID2D};
 use crate::point_sources::BandUnits::{AverageElectronFlux, Electrons};
+use crate::power_spectrum::*;
+use crate::spectral_response::*;
+use crate::power_spectrum::SpectrumUnits;
+use crate::power_spectrum::SpectrumUnits::f_lambda;
 use crate::spatial_effect::SpatialEffect;
 
 #[derive(Debug,Clone)]

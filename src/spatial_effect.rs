@@ -1,8 +1,7 @@
 use std::time::Instant;
-use astroimsim_geometry::coordinate_system::Coordinates;
-use astroimsim_geometry::grid2d::{Corners, Location, GRID2D};
-use astroimsim_geometry::points::Point;
-use astroimsim_spectra::spectral_response::SpectralResponseCurve;
+use crate::geometry::*;
+use crate::grid2d::*;
+
 use rand_distr;
 use uvex_fitrs::{Fits, FitsData, FitsDataArray};
 use uvex_fitrs::{ Hdu};

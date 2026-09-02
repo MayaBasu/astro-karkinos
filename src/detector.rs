@@ -1,11 +1,10 @@
 use std::time::Instant;
-use astroimsim_geometry::grid2d::GRID2D;
-use astroimsim_geometry::points::Point;
-use astroimsim_geometry::coordinate_system::{CoordinateSystem, Coordinates};
+use crate::geometry;
 use uvex_fitrs::{Fits, Hdu};
 use crate::point_sources::FullSpectrumSourceList;
-use crate::psf_grid::PsfGrid;
 use std::fs;
+use crate::geometry::CoordinateSystem;
+use crate::grid2d::GRID2D;
 use crate::spatial_effect::SpatialEffect;
 
 pub enum EffectType{

@@ -1,28 +1,35 @@
 use std::path::PathBuf;
 use std::str::FromStr;
-use astroimsim_geometry::coordinate_system::{CoordinateSystem, Coordinates};
-use astroimsim_geometry::grid2d::GRID2D;
+
 use clap::Parser;
 use convolve2d::Matrix;
 
 use astroimsim_data::prelude::{Load, PSF};
 use astroimsim_data::psf::Load::FromValue;
 use crate::detector::{Detector, EffectType};
-use crate::psf_grid::PsfGrid;
+
 use crate::spatial_effect::SpatialEffect;
 
 pub mod psf;
-pub mod psf_grid;
+
 pub mod detector;
 pub mod point_sources;
 pub mod spatial_effect;
-pub mod test;
 
+pub mod geometry;
+pub mod grid1d;
+pub mod grid2d;
+pub mod tests;
+pub mod notebook;
+
+pub mod power_spectrum;
+pub mod spectral_response;
 
 
 
 
 pub fn main() {
+    /*
 
     let coord = CoordinateSystem{
         x_axis: (1.0,0.0),
@@ -46,6 +53,8 @@ pub fn main() {
         "/Users/mayabasu/Desktop/uvex/FUV_PSF".to_string(),
         ("XFLD".to_string(), "YFLD".to_string()));
     fuv_psf.load_data_frames(64,64);
+
+     */
 
 
 

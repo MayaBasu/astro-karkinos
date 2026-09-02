@@ -8,7 +8,7 @@ description = "Data package for astroimsim ecosystem."
 
 [dependencies]
 
-astroimsim-geometry = "0.1.23"
+
 plotpy = "1.22.0"
 egui = "0.34.3"
 rand = "0.10.1"
@@ -17,7 +17,6 @@ rand_distr = "0.6.0"
 egui_plot = "0.35.0"
 eframe = "0.34.3"
 uvex-fitrs = "0.0.1"
-astroimsim-spectra = "0.1.12"
 rayon = "1.12.0"
 ndarray="0.17.0"
 ndarray-conv = "0.6.1"
@@ -25,3 +24,4 @@ convolve2d = "0.2.0"
 convolutions-rs = "0.3.4"
 clap = { version = "4.0.0-rc.1" , features = ["derive"] }
 clap_derive = { version = "4.0.0-rc.1" }
+markdown2pdf = "1.6.0"

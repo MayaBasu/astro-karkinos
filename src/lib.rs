@@ -1,18 +1,24 @@
 
 pub mod psf;
-pub mod psf_grid;
 pub mod detector;
 pub mod point_sources;
 pub mod spatial_effect;
-pub mod test;
-mod parser;
+
+pub mod geometry;
+pub mod grid1d;
+pub mod grid2d;
+pub mod tests;
+pub mod notebook;
+
+pub mod power_spectrum;
+pub mod spectral_response;
+
 
 pub mod prelude {
     pub use crate::{
         detector::*,
         point_sources::*,
         psf::*,
-        psf_grid::*,
         spatial_effect::*,
     };
 }
