@@ -2,8 +2,6 @@ use plotpy::Plot;
 use crate::geometry::*;
 use rand::distr::{Distribution, Uniform};
 use crate::geometry::Coordinates::RELATIVE;
-use crate::grid1d::GRID1D;
-use crate::grid2d::{PlotPoint, GRID2D};
 use crate::power_spectrum::{PowerSpectrum, SpectrumUnits};
 use crate::spectral_response::SpectralResponseCurve;
 

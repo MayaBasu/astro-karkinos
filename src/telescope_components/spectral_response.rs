@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::time::Instant;
-use crate::grid1d::*;
+
 use crate::geometry::*;
 
-use crate::power_spectrum::PowerSpectrum;
+use crate::inputs::power_spectrum::PowerSpectrum;
 
 
 #[derive(Debug,Clone)]

@@ -1,19 +1,15 @@
-use std::fs::File;
-use std::io::Write;
+use crate::inputs::power_spectrum::*;
+use crate::telescope_components::spectral_response::*;
 use std::time::Instant;
 
 use rand::distr::{Distribution, Uniform};
 use crate::geometry::*;
-use egui::accesskit::Invalid::Spelling;
+
+
 use rand_distr::Poisson;
-use crate::grid1d::GRID1D;
-use crate::grid2d::{Location, GRID2D};
-use crate::point_sources::BandUnits::{AverageElectronFlux, Electrons};
-use crate::power_spectrum::*;
-use crate::spectral_response::*;
-use crate::power_spectrum::SpectrumUnits;
-use crate::power_spectrum::SpectrumUnits::f_lambda;
-use crate::spatial_effect::SpatialEffect;
+use self::SpectrumUnits::*;
+use crate::inputs::point_sources::BandUnits::{AverageElectronFlux, Electrons};
+use crate::telescope_components::spatial_effect::SpatialEffect;
 
 #[derive(Debug,Clone)]
 pub struct FullSpectrumPointSource {

@@ -1,11 +1,11 @@
 use std::time::Instant;
-use crate::geometry;
+
 use uvex_fitrs::{Fits, Hdu};
-use crate::point_sources::FullSpectrumSourceList;
-use std::fs;
-use crate::geometry::CoordinateSystem;
-use crate::grid2d::GRID2D;
-use crate::spatial_effect::SpatialEffect;
+use crate::inputs::point_sources;
+
+
+use crate::geometry::*;
+use crate::telescope_components::spatial_effect::SpatialEffect;
 
 pub enum EffectType{
     Exposure(f64),

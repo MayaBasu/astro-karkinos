@@ -1,15 +1,8 @@
 use std::fs::File;
 use std::io::{BufReader, Write};
-use std::time::Instant;
+use crate::telescope_components::spectral_response::*;
 use crate::geometry::*;
-use crate::grid1d::*;
-use crate::grid2d::*;
 
-use plotpy::{Curve, Plot};
-use rand::distr::Distribution;
-use rand_distr::Poisson;
-
-use crate::spectral_response::SpectralResponseCurve;
 
 pub const kB_CGS:f64 = 1.380649 *10e-16; //erg K−1
 pub const h_CGS:f64 = 6.626069 *10e-27; //erg s

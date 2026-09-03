@@ -1,6 +1,6 @@
 
 [package]
-name = "astroimsim-data"
+name = "astro-karkinos"
 version = "0.1.23"
 edition = "2024"
 license = "MIT"

@@ -1,11 +1,11 @@
 use std::time::Instant;
 use crate::geometry::*;
-use crate::grid2d::*;
+
 
 use rand_distr;
 use uvex_fitrs::{Fits, FitsData, FitsDataArray};
 use uvex_fitrs::{ Hdu};
-use crate::psf::{DataFile, Load, PSF};
+use crate::telescope_components::psf::{DataFile, Load, PSF};
 
 #[derive(Clone,Debug)]
 pub struct SpatialEffect {

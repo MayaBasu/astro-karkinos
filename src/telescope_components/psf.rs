@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use uvex_fitrs::{Fits, FitsData, FitsDataArray, Hdu, HeaderValue};
 use ndarray::*;
 use convolve2d::{convolve2d, DynamicMatrix, Matrix};
-use crate::grid2d::{Corners, GRID2D};
+
 
 
 

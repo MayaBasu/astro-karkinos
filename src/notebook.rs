@@ -1,7 +1,7 @@
 use std::fs::{write, File};
 use std::io::{BufWriter, Read, Write};
-use crate::geometry::{CoordinateSystem, Coordinates,Point};
-use crate::grid2d::{PlotPoint, GRID2D};
+use crate::geometry::*;
+
 use plotpy::Plot;
 use markdown2pdf;
 use markdown2pdf::config::ConfigSource;
