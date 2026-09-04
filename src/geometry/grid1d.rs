@@ -1,264 +1,225 @@
-
+use std::cmp::{Ordering, PartialOrd};
 use crate::geometry::geometry::*;
 use plotpy::{Curve, Plot, Text};
 use rand::RngExt;
 
-pub enum Location1D {
-    TooHigh,
-    TooLow,
-    JustRight,
+
+pub enum Location{
+    Higher,
+    Lower,
+    Snapped(usize),
+    Between(usize,usize,Regular)
 }
 
-pub enum Neighbors {
-    Two(usize, usize),
-    One(usize),
-}
 
-#[derive(Debug, Clone)]
+
+#[derive(Debug, Clone,Copy)]
 pub struct GRID1D {
-    pub scale: f64,
-    pub step_size: f64,
-    pub minimum_value: f64,
-    pub maximum_value: f64,
-    pub snap_precision: f64,
-    pub label: String,
+    /*
+    units: nm, mm
+    step_size: Regular, strictly positive
+    num_steps > 0, finite
+    minimum_value: Regular, less than maximum
+    maximum_value: Regular
+    snap precision: value which is less than 0.5.
+    This is the "absolute snap precision", it is initialized with a relative snap precision
+    snap_precision = step_size*relative_snap_precision
+     */
+    units: Units,
+    step_size: Regular,
+    num_steps: usize,
+    minimum_value: Regular,
+    maximum_value: Regular,
+    snap_precision: Regular,
 
 }
+
+#[derive(Clone,Debug,Copy, PartialEq)]
+#[allow(non_camel_case_types)]
+pub enum Units{
+    nm,
+    mm,
+}
+
 
 impl GRID1D {
-    pub fn new_empty(
-        step_size: f64, //TODO have units for this length
-        minimum_value: f64,
-        maximum_value: f64,
-        snap_precision: f64,
-        scale: f64,
+    pub fn new(
+        number_of_points: usize,
+        minimum_value: Regular,
+        maximum_value: Regular,
+        relative_snap_precision: Regular,
+        units: Units,
+
     ) -> GRID1D {
-        assert!(snap_precision < 0.5);
+        assert!(number_of_points > 1,
+                "number_of_points must be greater than 1");
+        assert!(minimum_value < maximum_value,
+                "minimum_value must be strictly less than maximum value");
+        assert!(relative_snap_precision < Regular::try_from(0.5),
+                "relative snap precision must be less than 0.5");
+
+        let step_size = (maximum_value-minimum_value)/ Regular::from(number_of_points-1);
+        let snap_precision = relative_snap_precision * step_size;
+
         GRID1D {
-            scale,
+            num_steps,
             step_size,
             minimum_value,
             maximum_value,
             snap_precision,
-            label: "".to_string(),
+            units
         }
     }
+    pub fn num_points(&self)-> usize{
+        self.num_steps + 1
+    }
 
-
-    pub fn new_from_points(points: Vec<f64>, snap_precision: f64, label: String) -> GRID1D {
-        //we try to make a regular grid out of a vector of points
+    pub fn from_values(points: Vec<f64>, relative_snap_precision: Regular, units:Units) -> GRID1D {
         let num = points.len();
         assert!(num >= 2, "Need at least 2 points to make a grid");
+        let points:Vec<Regular> = points.iter().map(|f|Regular::try_from(*f)).collect();
         let high = points[num - 1];
         let low = points[0];
         assert!(low < high, "First point is not lower than last point");
         let expected_interval = (high - low) / (num as f64 - 1.0);
+        let snap_precision = relative_snap_precision*expected_interval;
         (0..num - 1).for_each(|i| {
             assert!(points[i + 1] > points[i],
                     "Failed to make grid because points must monotonically increase");
-            assert!(((points[i + 1] - points[i]) - expected_interval).abs() < snap_precision * expected_interval,
+            assert!(((points[i + 1] - points[i]) - expected_interval).abs() < snap_precision,
                     " Failed to make grid because points must be evenly spaced")
         });
         GRID1D {
-            scale: 1.0,
+            units,
             step_size: expected_interval,
+            num_steps,
             minimum_value: low,
             maximum_value: high,
             snap_precision,
-            label,
         }
     }
 
     pub fn pretty_print(&self) {
-        println!("1D grid {:?} \n\
-        min: {} \n\
-        max: {} \n\
-        step size: {} \n\
-        snap precision: {} \n",
-                 self.label,
-                 self.minimum_value,
-                 self.maximum_value,
-                 self.step_size,
-                 self.snap_precision)
-    }
-    pub fn num(&self) -> usize {
-        //TODO MUST VERIFY THI IS AN INTEGER
-        ((self.maximum_value - self.minimum_value) / self.step_size) as usize + 1
+        println!("1D grid in units of {:?} \n\
+        min: {:?} \n\
+        max: {:?} \n\
+        number of points: {:?} \n
+        step size: {:?} \n\
+        snap precision: {:?} \n",
+        self.units,
+        self.minimum_value,
+        self.maximum_value,
+        self.num_steps,
+        self.step_size,
+        self.snap_precision)
     }
 
-
-    pub fn location(&self, grid_number: usize) -> f64 {
-        assert!((grid_number <= self.num() - 1) && (grid_number >= 0));
+    pub fn locate_grid_point(&self, grid_number: usize) -> f64 {
+        assert!((grid_number <= self.num() - 1) && (grid_number >= 0), "Grid number must be between 0 and num_points-1 inclusive");
         self.minimum_value + self.step_size * grid_number as f64
     }
 
-    pub fn size(&self) -> f64 {
+    pub fn grid_width(&self) -> Regular {
         self.step_size * (self.num() - 1) as f64
     }
 
-    pub fn random(&self) -> f64 {
+    pub fn random_point(&self) -> Regular {
         let mut rng = rand::rng();
         let scale: f64 = rng.random();
-        self.minimum_value + self.size() * scale
-    }
-    pub fn inside_or_outside(&self, point: f64) -> Location1D {
-        let epsilon = self.snap_precision;
-        let max = self.minimum_value + self.size();
-        if (point < self.minimum_value - epsilon) {
-            return Location1D::TooLow
-        };
-        if (point > max + epsilon) {
-            return Location1D::TooHigh
-        }
-        Location1D::JustRight
+        self.minimum_value + self.grid_width() * Regular::try_from(scale)
     }
 
-    pub fn fit_grid(&self, point: f64) -> (usize, f64) {
-        //ensure that the point is within the grid
-        match self.inside_or_outside(point) {
-            Location1D::TooHigh => { panic!("too big to fit") }
-            Location1D::TooLow => { panic!("too small to fit") }
-            Location1D::JustRight => {}
-        }
-        //find the nearest point and then return the residuals to it
-        let delta = point - self.minimum_value;
-        let scaled_residual = delta / self.step_size - (delta / self.step_size).floor();
+    pub fn locate(&self, value:Regular, unit:Units )-> Location{
+        //TODO: Add in automatic unit conversion
+        assert_eq!(self.units, unit, "Convert value to same unit as 1D grid before attempting to locate");
 
+        if value > (self.maximum_value + self.snap_precision) {
+            return Location::Higher};
+        if value < (self.minimum_value - self.snap_precision) {
+            return Location::Lower }
 
-        let (modulus, residual) = if scaled_residual <= 0.5 {
-            let modulus = (delta / self.step_size).floor() as usize;
-            let residual = scaled_residual * self.step_size;
-            (modulus, residual)
-        } else {
-            let modulus = (delta / self.step_size).floor() as usize + 1;
-            let residual = (scaled_residual - 1.0) * self.step_size;
-            (modulus, residual)
+        //point indices below and above the point
+        let delta = (value-self.minimum_value);
+        let lower = (delta/self.step_size).floor();
+        let upper = (delta/self.step_size).ceil();
+
+        if ((upper*self.step_size)-delta) < self.snap_precision{
+            return Location::Snapped(upper.value() as usize)};
+        if (delta - (lower*self.step_size)) < self.snap_precision{
+            return Location::Snapped(lower.value() as usize)
         };
 
-        (modulus, residual)
-    }
-    //TODO remove redundancey of these two functions
+        let scaled_residual = (delta-lower)/self.step_size;
 
-    pub fn snap(&self, point: f64) -> usize {
-        let (modulus, residual) = self.fit_grid(point);
-        if (residual.abs() >= self.snap_precision) {
-            panic!("Couldn't snap point")
-        };
-        modulus
+        Location::Between(
+            lower.value() as usize,
+            upper.value() as usize,
+            scaled_residual
+        )
+
     }
 
 
-    pub fn find_neighbors(&self, point: f64) -> Neighbors {
-        let epsilon = self.snap_precision;
-        let (modulus, residual) = self.fit_grid(point);
-        if (residual.abs() <= epsilon) {
-            return Neighbors::One(self.snap(point))
-        };
-        //The point must be in the middle
-        let (upper, lower) = if residual < 0.0 { (modulus, modulus - 1) } else { (modulus + 1, modulus) };
-        Neighbors::Two(upper, lower)
-    }
-
-    pub fn plot_points(&self, plot: &mut Plot, add_point: PlotPoint) {
-        let mut frame = Curve::new();
-        frame.set_marker_color("pink")
-            .set_marker_every(1)
-            .set_marker_style(".");
+    pub fn plot_gridpoints(&self, plot: &mut Plot, label:String, color:String) {
 
         let mut grid_points = Curve::new();
         grid_points.set_line_style("none")
-            .set_label(format!("Grid points: {:?}", self.label).as_str())
-            .set_marker_color("blue")
+            .set_label(format!("{:?}", label).as_str())
+            .set_marker_color(color.as_str())
             .set_marker_every(1)
             .set_marker_size(7.0)
             .set_marker_style(".");
-
-        let mut corner = Curve::new();
-        corner
-            .set_label("Corner")
-            .set_line_style("none")
-            .set_marker_color("#eeea83")
-            .set_marker_every(1)
-            .set_marker_size(10.0)
-            .set_marker_style(".");
-
-
-        let mut extra_point = Curve::new();
-        extra_point.set_marker_color("#eeea83")
-            .set_marker_every(1)
-            .set_marker_size(10.0)
-            .set_line_style("none")
-            .set_marker_style("*");
-
 
         let mut grid_numbers = Text::new();
         grid_numbers.set_color("purple")
             .set_fontsize(5.0);
 
-
         grid_points.points_begin();
         for point in 0..self.num() {
-            let point_location = self.location(point);
+            let point_location = self.locate_grid_point(point);
             grid_points.points_add(point_location, 0.0);
             let label = format!("{}", point);
             grid_numbers.draw(point_location, 0.0, label.as_str());
         }
         grid_points.points_end();
 
-        corner.points_begin();
-        let corner_location = self.minimum_value;
-        let corner_label = format!("Corner: ({:.3},{:.3})", corner_location, 0.0);
-        corner.points_add(corner_location, 0.0).set_label(corner_label.as_str());
-        corner.points_end();
-
-        let mut example_point = Vec::new();
-
-        match add_point {
-            PlotPoint::No => {}
-            PlotPoint::Given(point) => { example_point.push(point.x) }
-            PlotPoint::Random => {
-                let random = self.random();
-                example_point.push((random));
-            }
-        };
-
-        for point in example_point {
-            let (_, res) = self.fit_grid(point);
-            extra_point.points_begin();
-            extra_point.points_add(point, 0.0).set_label(format!("x, y residuals: {:.3}", res).as_str());
-            extra_point.points_end();
-
-            let corners = self.find_neighbors(point);
-            let mut frame_points = Vec::new();
-            match corners {
-                Neighbors::Two(a, b) => {
-                    frame_points.push(a);
-                    frame_points.push(b);
-                    println!("{:?}", (a, b));
-                }
-
-                Neighbors::One(a) => { frame_points.push(a); }
-            }
-            frame.points_begin();
-            for point in frame_points {
-                println!("point {point}");
-                let point = self.location(point);
-                frame.points_add(point, 0.0);
-            }
-
-            frame.points_end();
-        }
-
-
         plot.add(&grid_numbers);
         plot.add(&grid_points);
-        plot.add(&extra_point);
-        plot.add(&corner);
-        plot.add(&frame)
-            .set_figure_size_inches(10.0, 10.0)
+            plot.set_figure_size_inches(10.0, 10.0)
             .grid_labels_legend("x", "y");
     }
+    pub fn plot_extra_point(&self, value: Regular, units: Units, plot:&mut Plot){
+
+        let mut frame_indices = Vec::new();
+        match self.locate(value,units) {
+            Location::Higher => { frame_indices.push(self.num_steps)}
+            Location::Lower => { frame_indices.push(0)}
+            Location::Snapped(i) => { frame_indices.push(i)}
+            Location::Between(i, j, _) => {
+                frame_indices.push(i);
+                frame_indices.push(j)}
+        };
+
+        let mut frame = Curve::new();
+        frame.set_marker_color("#eeea83")
+            .set_marker_every(1)
+            .set_marker_size(10.0)
+            .set_line_style("dotted")
+            .set_marker_style("*");
+
+        frame.points_begin();
+        for point in frame_indices{
+            frame.points_add(self.locate_grid_point(point),0.0);
+        }
+        frame.points_end();
+        plot.add(&frame);
+
+        }
+
 }
+
+
+
 
 
 

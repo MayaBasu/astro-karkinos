@@ -72,7 +72,7 @@ impl PSF {
             data,
             x_pixels: x_num,
             y_pixels: y_num,
-            center: Point::new(center_x,center_y,Coordinates::ABSOLUTE),
+            center: Point::new(Regular::try_from(center_x),Regular::try_from(center_y),Coordinates::ABSOLUTE),
             size: (size_x,size_y),
         }
     }
@@ -86,7 +86,7 @@ impl PSF {
         println!("Trying to write to {path}, {:?}",data);
         let mut primary_hdu = Hdu::new(&[64, 64], data);
         println!("Done making hdu");
-        let (x,y) = self.center.to_absolute().values();
+        let (x,y) = self.center.as_absolute().values();
         println!("x,y,{x} {y}");
         primary_hdu.insert(center_keys.0,x.to_string().as_str() );
         primary_hdu.insert(center_keys.1,y.to_string().as_str() );
@@ -181,7 +181,7 @@ impl PsfGrid{
             let frame = PSF::load_file(
                 path,
                 (Load::FromKey(self.center_fits_keys.0.to_string()), Load::FromKey(self.center_fits_keys.1.to_string())),
-                (Load::FromValue(self.grid.x_size),Load::FromValue(self.grid.y_size)),
+                (Load::FromValue(self.grid.x_size()),Load::FromValue(self.grid.y_size())),
                 x_num,y_num,
             );
 
@@ -191,7 +191,7 @@ impl PsfGrid{
         data.sort_by_key(|x|x.0);
         self.data = data;
         println!("Loaded {counter} files into a Grid Struct from {:?}",self.directory_path);
-        assert_eq!(counter,self.grid.num_points,"Loaded the wrong number of PSF files");
+        assert_eq!(counter,self.grid.num_points(),"Loaded the wrong number of PSF files");
 
 
     }
@@ -200,15 +200,15 @@ impl PsfGrid{
 
     pub fn validate(&mut self) -> bool {
         //check to make sure there are the same number of data frames as there are grid points
-        if self.data.len() != self.grid.num_points{
-            println!("Validation failed: expected {:?} data frames, have {:?}",self.grid.num_points,self.data.len());
+        if self.data.len() != self.grid.num_points(){
+            println!("Validation failed: expected {:?} data frames, have {:?}",self.grid.num_points(),self.data.len());
             self.valid = false;
             return false
         };
         //check to make sure that every grid point has a data frame
         let mut missing = Vec::new();
         let mut counter = 0;
-        for grid_number in 0..self.grid.num_points{
+        for grid_number in 0..self.grid.num_points(){
             counter += 1;
             if !self.data.iter().any(|(index,_)| *index==grid_number) {
                 missing.push(grid_number)

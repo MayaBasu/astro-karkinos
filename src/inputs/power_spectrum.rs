@@ -24,7 +24,7 @@ pub struct PowerSpectrum {
 impl PowerSpectrum { //https://vitaly.neustroev.net/useful-info/conversions/
     
     pub fn from_data(grid1d: GRID1D, data:Vec<f64>, units:SpectrumUnits, label:String)-> PowerSpectrum{
-        assert_eq!(grid1d.num(), data.len());
+        assert_eq!(grid1d.num_points(), data.len());
         let data:Vec<(usize,f64)> = data.iter().enumerate()
             .map(|(i,d)|{(i,*d)}).collect();
         PowerSpectrum{
@@ -44,7 +44,7 @@ impl PowerSpectrum { //https://vitaly.neustroev.net/useful-info/conversions/
             self.label, self.units, self.grid1d, header).as_bytes()).expect("Failed to write header");
 
         for (point,value) in &self.data{
-            let location = self.grid1d.location(*point);
+            let location = self.grid1d.locate_grid_point(*point);
             file.write_all(format!("\n{:?}   {:?}", location, value).as_bytes()).unwrap();
         }
 
@@ -54,7 +54,7 @@ impl PowerSpectrum { //https://vitaly.neustroev.net/useful-info/conversions/
 
         let mut cgs_data = Vec::with_capacity(self.data.len());
         for (point,value) in &self.data{
-            let lambda = self.grid1d.location(*point);
+            let lambda = self.grid1d.locate_grid_point(*point);
            // println!("lambda is {:?}",lambda);
             let cgs_value = match self.units {
                 SpectrumUnits::F_nu => {value}
@@ -79,7 +79,7 @@ impl PowerSpectrum { //https://vitaly.neustroev.net/useful-info/conversions/
         //self.sum();
         let mut converted_values = Vec::with_capacity(self.data.len());
         for (point, value) in &self.data {
-            let lambda = self.grid1d.location(*point);
+            let lambda = self.grid1d.locate_grid_point(*point);
             //println!("lambda is {:?}",lambda);
             let converted_value  = match unit {
                 SpectrumUnits::F_nu => {value},
@@ -97,8 +97,8 @@ impl PowerSpectrum { //https://vitaly.neustroev.net/useful-info/conversions/
 
     pub fn flat_AB(ab_mag:f64,grid1d:GRID1D,label:String)-> PowerSpectrum {
         let units = SpectrumUnits::AbMagnitude;
-        let mut data = Vec::with_capacity(grid1d.num());
-        for point in 0..grid1d.num(){
+        let mut data = Vec::with_capacity(grid1d.num_points());
+        for point in 0..grid1d.num_points(){
             data.push((point,ab_mag))
         }
         PowerSpectrum{
@@ -111,8 +111,8 @@ impl PowerSpectrum { //https://vitaly.neustroev.net/useful-info/conversions/
 
     pub fn flat(f_lambda:f64,grid1d:GRID1D,label:String)-> PowerSpectrum {
         let units = SpectrumUnits::f_lambda;
-        let mut data = Vec::with_capacity(grid1d.num());
-        for point in 0..grid1d.num(){
+        let mut data = Vec::with_capacity(grid1d.num_points());
+        for point in 0..grid1d.num_points(){
             data.push((point,f_lambda))
         }
         PowerSpectrum{
@@ -125,9 +125,9 @@ impl PowerSpectrum { //https://vitaly.neustroev.net/useful-info/conversions/
 
     pub fn black_body(temp_kelvin:f64, grid1d:GRID1D, label:String)-> PowerSpectrum{
         let units = SpectrumUnits::F_lambda;
-        let mut data = Vec::with_capacity(grid1d.num());
-        for point in 0..grid1d.num(){
-            let wavelength = grid1d.location(point);
+        let mut data = Vec::with_capacity(grid1d.num_points());
+        for point in 0..grid1d.num_points(){
+            let wavelength = grid1d.locate_grid_point(point);
             let scale_factor = 2.0*std::f64::consts::PI*h_CGS*c_CGS.powi(2)/(wavelength.powi(5));
             let exponent = h_CGS*c_CGS/(wavelength*kB_CGS*temp_kelvin);
             let F_lambda = scale_factor*(1.0/(exponent.exp()-1.0));

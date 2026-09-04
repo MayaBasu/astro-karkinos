@@ -104,8 +104,8 @@ impl FullSpectrumSourceList {
         let start = Instant::now();
         for source in &mut self.sources{
             let scale = match effect.grid.inside_or_outside(&source.point){
-                Location::Outside => continue,
-                Location::Inside => effect.get_data(&source.point)
+                grid2d::Location::Outside => continue,
+                grid2d::Location::Inside => effect.get_data(&source.point)
             };
             source.scale(scale)
         }

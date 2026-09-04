@@ -45,7 +45,7 @@ impl SpectralResponseCurve {
             self.label, self.dat_path, self.grid1d, header).as_bytes()).expect("Failed to write header");
 
         for (point,value) in &self.data{
-            let location = self.grid1d.location(*point);
+            let location = self.grid1d.locate_grid_point(*point);
             file.write_all(format!("\n{:?}   {:?}", location, value).as_bytes()).unwrap();
         }
 
@@ -84,7 +84,7 @@ impl SpectralResponseCurve {
         println!("Parsed {:?} lines in {:?} ms", data.len(), start.elapsed().as_millis());
        // println!("{:?}",data);
        // println!("{:?}",self.grid1d);
-        assert_eq!(data.len(), self.grid1d.num(), "Retrieved a different number of records than expected");
+        assert_eq!(data.len(), self.grid1d.num_points(), "Retrieved a different number of records than expected");
 
 
         let mut same_num_data_points_per_record = true;
@@ -113,7 +113,7 @@ impl SpectralResponseCurve {
         self.data.sort_by_key(|x| x.0); //TODO move this into a validation function
         let mut new_data = Vec::new();
         for point in 0..new_grid.num() {
-            let new_location = new_grid.location(point);
+            let new_location = new_grid.locate_grid_point(point);
             let value = match self.grid1d.inside_or_outside(new_location) {
                 Location1D::TooHigh => {
                     //println!("new gridding {:?},location is {:?}, too high", point, new_location);
@@ -128,8 +128,8 @@ impl SpectralResponseCurve {
                     match self.grid1d.find_neighbors(new_location) {
                         Neighbors::Two(lower_index, upper_index) => {
                           //  println!("new gridding {:?},location is {:?}, just right, two neiborhs: {:?}", point, new_location, (lower_index, upper_index));
-                            let lower = self.grid1d.location(lower_index);
-                            let upper = self.grid1d.location(upper_index);
+                            let lower = self.grid1d.locate_grid_point(lower_index);
+                            let upper = self.grid1d.locate_grid_point(upper_index);
                             let lower_delta = new_location - lower;
                             let upper_delta = upper - new_location;
                             let lower_weight = lower_delta / (lower_delta + upper_delta);

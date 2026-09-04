@@ -60,10 +60,10 @@ impl Detector {
     }
 
     pub fn create_constant_background(&mut self, fuv_background_brightness:f64,nuv_background_brightness:f64){
-        let mut data = Vec::with_capacity(self.grid.y_num);
-        for row in 0..self.grid.y_num{
-            let mut row_vec = Vec::with_capacity(self.grid.x_num);
-            for column in 0..self.grid.x_num{
+        let mut data = Vec::with_capacity(self.grid.y_num());
+        for row in 0..self.grid.y_num(){
+            let mut row_vec = Vec::with_capacity(self.grid.x_num());
+            for column in 0..self.grid.x_num(){
                 row_vec.push([fuv_background_brightness,nuv_background_brightness])
             }
             data.push(row_vec);
@@ -71,9 +71,9 @@ impl Detector {
         self.data= data;
     }
     pub fn multiply_effect(&mut self, effect:&SpatialEffect,index:usize, effect_type: EffectType){
-        assert_eq!(effect.grid.num_points, self.grid.num_points, "Grids are not equal");
-        for row in 0..self.grid.y_num{
-            for column in 0..self.grid.x_num{
+        assert_eq!(effect.grid.num_points(), self.grid.num_points(), "Grids are not equal");
+        for row in 0..self.grid.y_num(){
+            for column in 0..self.grid.x_num(){
                 match effect_type{
                     EffectType::Exposure(time) => {self.data[column][row][index] = self.data[column][row][index]*effect.data[column][row]*time;}
                     EffectType::Once => {self.data[column][row][index] = self.data[column][row][index]*effect.data[column][row];}
@@ -84,9 +84,9 @@ impl Detector {
     }
 
     pub fn add_effect(&mut self, effect:&SpatialEffect,index:usize,effect_type: EffectType){
-        assert_eq!(effect.grid.num_points, self.grid.num_points, "Grids are not equal");
-        for row in 0..self.grid.y_num{
-            for column in 0..self.grid.x_num{
+        assert_eq!(effect.grid.num_points(), self.grid.num_points(), "Grids are not equal");
+        for row in 0..self.grid.y_num(){
+            for column in 0..self.grid.x_num(){
                 match effect_type{
                     EffectType::Exposure(time) => {self.data[column][row][index] = self.data[column][row][index]+effect.data[column][row]*time;}
                     EffectType::Once => {self.data[column][row][index] = self.data[column][row][index]+effect.data[column][row];}
@@ -97,8 +97,8 @@ impl Detector {
     }
     
     pub fn multiply_interpolated_effect(&mut self, effect:&SpatialEffect, index:usize){
-        for row in 0..self.grid.y_num {
-            for column in 0..self.grid.x_num {
+        for row in 0..self.grid.y_num() {
+            for column in 0..self.grid.x_num() {
                 let grid_number = self.grid.grid_number(column, row);
                 let location = self.grid.locate(grid_number);
                 let effect = effect.get_data(&location);

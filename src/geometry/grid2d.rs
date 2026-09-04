@@ -21,25 +21,25 @@ pub enum Bin {
 
 #[derive(Debug, Clone)]
 pub struct GRID2D {
-    pub coordinates: Coordinates,
+    coordinates: Coordinates,
 
-    pub x_num: usize,
-    pub y_num: usize,
+    x_num: usize,
+    y_num: usize,
 
-    pub x_step_size: f64, //In coordinate system
-    pub y_step_size: f64, //In coordinate system
+    x_step_size: f64, //In coordinate system
+    y_step_size: f64, //In coordinate system
 
-    pub x_size: f64,
-    pub y_size: f64,
+    x_size: f64,
+    y_size: f64,
 
-    pub num_points: usize,
+    num_points: usize,
 
-    pub center: (f64, f64),
-    pub corner: (f64, f64),
+    center: (Regular, Regular),
+    corner: (Regular, Regular),
 
-    pub snap_precision: f64, //In coordinat sytstem
+    snap_precision: f64, //In coordinat sytstem
 
-    pub label: String,
+    label: String,
 
 }
 
@@ -201,6 +201,26 @@ impl GRID2D {
         (x_mod, y_mod, x_residual, y_residual)
     }
     //TODO remove redundancey of these two functions
+
+    pub fn x_size(&self)->f64{
+        self.x_size
+    }
+
+    pub fn y_size(&self)->f64{
+        self.y_size
+    }
+    pub fn num_points(&self)-> usize{
+        self.num_points
+    }
+
+    pub fn y_num(&self)-> usize{
+        self.y_num
+    }
+
+    pub fn x_num(&self)-> usize{
+        self.x_num
+    }
+
     pub fn fit_grid_unscaled(&self, point: Point) -> (usize, usize, f64, f64) {
         //ensure that the point is within the grid
         match self.inside_or_outside(&point) {
@@ -431,7 +451,7 @@ impl GRID2D {
 
         grid_points.points_begin();
         for point in 0..self.num_points {
-            let point_location = self.locate(point).to_absolute();
+            let point_location = self.locate(point).as_absolute();
             grid_points.points_add(point_location.x, point_location.y);
             let label = format!("{}", point);
             grid_numbers.draw(point_location.x, point_location.y, label.as_str());
@@ -440,7 +460,7 @@ impl GRID2D {
 
 
         corner.points_begin();
-        let corner_location = self.locate(0).to_absolute().values();
+        let corner_location = self.locate(0).as_absolute().values();
         let corner_label = format!("Corner: ({:.3},{:.3})", corner_location.0, corner_location.1);
         corner.points_add(corner_location.0, corner_location.1).set_label(corner_label.as_str());
         corner.points_end();
@@ -459,7 +479,7 @@ impl GRID2D {
         for point in example_point {
             let (_, _, x_res, y_res) = self.fit_grid(&point);
             extra_point.points_begin();
-            extra_point.points_add(point.to_absolute().values().0, point.to_absolute().clone().values().1).set_label(format!("x, y residuals: {:.3}, {:.3}", x_res, y_res).as_str());
+            extra_point.points_add(point.as_absolute().values().0, point.as_absolute().clone().values().1).set_label(format!("x, y residuals: {:.3}, {:.3}", x_res, y_res).as_str());
             extra_point.points_end();
 
             let corners = self.find_corners(point);
@@ -481,7 +501,7 @@ impl GRID2D {
             frame.points_begin();
             for point in frame_points {
                 //println!("point {point}");
-                let point = self.locate(point).to_absolute();
+                let point = self.locate(point).as_absolute();
                 frame.points_add(point.x, point.y);
             }
 
@@ -535,10 +555,10 @@ impl GRID2D {
         outline.points_begin();
 
         let (p0, p1, p2, p3) = self.outer_boarder();
-        let p0 = p0.to_absolute();
-        let p1 = p1.to_absolute();
-        let p2 = p2.to_absolute();
-        let p3 = p3.to_absolute();
+        let p0 = p0.as_absolute();
+        let p1 = p1.as_absolute();
+        let p2 = p2.as_absolute();
+        let p3 = p3.as_absolute();
         outline.points_add(p0.x, p0.y);
         outline.points_add(p1.x, p1.y);
         outline.points_add(p2.x, p2.y);

@@ -20,8 +20,8 @@ impl SpatialEffect{
         SpatialEffect{label,grid,data:vec![],fits_path}
     }
     pub fn from_matrix(label:String, grid:GRID2D,fits_path:String,data:Vec<Vec<f64>>)-> SpatialEffect{
-        assert_eq!(grid.y_num,data.len());
-        for row in &data{ assert_eq!(grid.x_num, row.len()); }
+        assert_eq!(grid.y_num(),data.len());
+        for row in &data{ assert_eq!(grid.x_num(), row.len()); }
         SpatialEffect{label,grid,fits_path,data}
     }
 
@@ -29,8 +29,8 @@ impl SpatialEffect{
     pub fn load_data(&mut self,trim:usize){
         println!("Loading {:?} into {:?}",self.fits_path, self.label);
         let fits = Fits::open(self.fits_path.clone()).expect("Failed to open FITS file");
-        let raw_data_x = self.grid.x_num+2*trim;
-        let raw_data_y = self.grid.y_num+2*trim;
+        let raw_data_x = self.grid.x_num()+2*trim;
+        let raw_data_y = self.grid.y_num()+2*trim;
         let primary_hdu= fits.iter().next().expect("Couldn't find primary HDU");
         let (mut data,shape) = match primary_hdu.read_data() {
             FitsData::FloatingPoint64(FitsDataArray { shape, data }) => (data,shape),
@@ -56,11 +56,11 @@ impl SpatialEffect{
     pub fn spawn_downsample(&self, grid2d: GRID2D)-> SpatialEffect{
 
         let down_sampled_data:Vec<f64> =
-            (0..grid2d.num_points).map(|index|
+            (0..grid2d.num_points()).map(|index|
             {//println!("value at index {:?} is  {:?}, location {:?}", index,self.get_data(&grid2d.locate(index)),grid2d.locate(index) );
                 self.get_data(&grid2d.locate(index))}
             ).collect();
-        let data:Vec<Vec<f64>> = down_sampled_data.chunks(grid2d.x_num)
+        let data:Vec<Vec<f64>> = down_sampled_data.chunks(grid2d.x_num())
             .map(|v|v.to_vec()).collect();
         println!("BEFORE {:?}", self.data[0][0]);
         println!("After{:?}", data[0][0]);
