@@ -17,7 +17,6 @@ impl Regular{
         assert!(float.is_finite(), "Tried to convert float to NonNaNfinite type, but float is infinite");
         Regular{value:float}
     }
-
     pub fn value(&self)->f64{
         self.value
     }
@@ -37,13 +36,11 @@ impl ::core::ops::Add for Regular {
         }
     }
 }
-
 impl Display for Regular {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.value().fmt(f)
     }
 }
-
 impl ::core::ops::Sub for Regular {
     type Output = Regular;
     fn sub(self, rhs: Regular) -> Regular {
@@ -60,7 +57,6 @@ impl ::core::ops::Mul for Regular {
         }
     }
 }
-
 impl ::core::ops::Div for Regular {
     type Output = Regular;
     fn div(self, rhs: Self) -> Self::Output {
@@ -71,11 +67,6 @@ impl ::core::ops::Div for Regular {
         }
     }
 }
-
-
-
-
-
 
 
 
@@ -90,36 +81,33 @@ pub struct CoordinateSystem {
     x_axis: (Regular, Regular),
     y_axis: (Regular, Regular),
     center: (Regular, Regular),
-    label: String,
 }
 
 
 impl Coordinates {
-    pub fn plot(&self, plot: &mut Plot, color: String) {
+    pub fn plot(&self, plot: &mut Plot, color: String, label:String) {
         match &self {
             Coordinates::ABSOLUTE => {
-                let absolute = CoordinateSystem {
-                    x_axis: (Regular::try_from(1.0), Regular::try_from(0.0)),
-                    y_axis: (Regular::try_from(0.0), Regular::try_from(1.0)),
-                    center: (Regular::try_from(0.0), Regular::try_from(0.0)),
-                    label: "Absolute".to_string(),
-                };
-                absolute.plot(plot, color)
+                let absolute = CoordinateSystem::new(
+                    (1.0, 0.0),
+                    (0.0, 1.0),
+                    (0.0, 0.0),
+                );
+                absolute.plot(plot, color, label)
             }
-            Coordinates::RELATIVE(c) => { c.plot(plot, color) }
+            Coordinates::RELATIVE(c) => { c.plot(plot, color,label) }
         }
     }
 }
 
 impl CoordinateSystem {
-    pub fn new(x_axis: (Regular, Regular), y_axis: (Regular, Regular), center: (Regular, Regular), label: String) -> CoordinateSystem {
+    pub fn new(x_axis: (f64, f64), y_axis: (f64, f64), center: (f64, f64)) -> CoordinateSystem {
         assert!(x_axis.0 + x_axis.1);
 
         CoordinateSystem {
-            x_axis,
-            y_axis,
-            center,
-            label,
+            x_axis: (Regular::try_from(x_axis.0),Regular::try_from(x_axis.1)),
+            y_axis: (Regular::try_from(y_axis.0),Regular::try_from(y_axis.1)),
+            center: (Regular::try_from(center.0),Regular::try_from(center.1)),
         }
     }
     pub fn point_from_absolute(&self, point: Point) -> Point {
@@ -130,20 +118,20 @@ impl CoordinateSystem {
                 let proj_x = ((point.x - self.center.0) * self.y_axis.1 - (point.y - self.center.1) * self.y_axis.0) / det;
                 let proj_y = (-(point.x - self.center.0) * self.x_axis.1 + (point.y - self.center.1) * self.x_axis.0) / det;
 
-                Point::new(proj_x, proj_y, Coordinates::RELATIVE(self.clone()))
+                Point::new(proj_x, proj_y, Coordinates::RELATIVE(&self))
             }
             Coordinates::RELATIVE(_) => { panic!("tried to from_absolute a point in a not absolute coordinate system :( ") }
         }
     }
 
 
-    pub fn plot(&self, plot: &mut Plot, color: String) {
+    pub fn plot(&self, plot: &mut Plot, color: String, label:String) {
         let mut x_axis = Curve::new();
 
         x_axis.set_line_width(2.0);
         x_axis.set_line_color(&*color);
         x_axis.set_line_style("dashed");
-        x_axis.set_label(format!("x axis for {:?}", self.label).as_str());
+        x_axis.set_label(format!("x axis for {:?}", label).as_str());
 
         x_axis.points_begin();
         x_axis.points_add(self.center.0.value, self.center.1.value);
@@ -155,7 +143,7 @@ impl CoordinateSystem {
         y_axis.set_line_width(1.0);
         y_axis.set_line_color(&*color);
         x_axis.set_line_style("solid");
-        y_axis.set_label(format!("y axis for {:?}", self.label).as_str());
+        y_axis.set_label(format!("y axis for {:?}", label).as_str());
 
         y_axis.points_begin();
         y_axis.points_add(self.center.0.value, self.center.1.value);
@@ -177,8 +165,12 @@ pub struct Point {
 }
 
 impl Point {
-    pub fn new(x: Regular, y: Regular, coordinates: Coordinates) -> Point {
-        Point { x, y, coordinates }
+    pub fn new(x: f64, y: f64, coordinates: &Coordinates) -> Point {
+        Point { x: Regular::try_from(x), y:Regular::try_from(y), coordinates: *coordinates.clone() }
+    }
+
+    pub fn new_from_regular(x:Regular,y:Regular, coordinates: &Coordinates)->Point{
+        Point {x,y,coordinates: *coordinates.clone()}
     }
     pub fn as_absolute(&self) -> Point {
         match &self.coordinates {
@@ -189,7 +181,7 @@ impl Point {
             Coordinates::RELATIVE(coordinate_system) => {
                 let absolute_x = self.x * coordinate_system.x_axis.0 + self.y * coordinate_system.y_axis.0 + coordinate_system.center.0;
                 let absolute_y = self.x * coordinate_system.x_axis.1 + self.y * coordinate_system.y_axis.1 + coordinate_system.center.1;
-                Point::new(absolute_x, absolute_y, Coordinates::ABSOLUTE)
+                Point::new_from_regular(absolute_x, absolute_y, &Coordinates::ABSOLUTE)
             }
         }
     }
