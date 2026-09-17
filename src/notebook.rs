@@ -1,3 +1,4 @@
+/*
 use std::fs::{write, File};
 use std::io::{BufWriter, Read, Write};
 use crate::geometry::*;
@@ -60,10 +61,10 @@ pub fn generate_notebook() {
 }
 pub fn test_coordiantes()-> (CoordinateSystem,CoordinateSystem){
     let mut plot = Plot::new();
-    let basic_coordinates = CoordinateSystem::new((1.0,0.0),(0.0,1.0),(0.0,0.0), "basic".to_string());
-    let strange_coordinates = CoordinateSystem::new((0.7,0.3),(1.4,-1.3),(0.5,0.5),"strange".to_string());
-    basic_coordinates.plot(&mut plot,"green".to_string());
-    strange_coordinates.plot(&mut plot, "purple".to_string());
+    let basic_coordinates = CoordinateSystem::new([1.0,0.0],[0.0,1.0],[0.0,0.0]);
+    let strange_coordinates = CoordinateSystem::new([0.7,0.3],[1.4,-1.3],[0.5,0.5]);
+    basic_coordinates.plot(&mut plot, "orange".to_string(), "basic".to_string());
+    strange_coordinates.plot(&mut plot, "purple".to_string(),"strange".to_string());
     plot.set_title("Defining and Plotting Coordinate Systems");
     plot.legend();
     plot.save("tests/coordinate_test").expect("could not save figure");
@@ -74,10 +75,10 @@ pub fn test_grids(coords1:CoordinateSystem,coords2:CoordinateSystem)->(GRID2D,GR
 
 
     let mut plot = Plot::new();
-    let grid1 = GRID2D::new_empty((10,10), (1.0,1.0), (0.0,0.0),0.001, Coordinates::RELATIVE(coords1.clone()));
+    let grid1 = GRID2D::new_empty([10,10], [1.0,1.0], [0.0,0.0],0.001, Coordinates::RELATIVE(coords1.clone()));
     coords1.plot(&mut plot,"green".to_string());
     grid1.plot_outline(&mut plot,"green".to_string());
-    grid1.plot_points(&mut plot, PlotPoint::No);
+    grid1.plot_grid_points(&mut plot, PlotPoint::No);
     plot.set_title("Regular Grid on a Coordinate System");
     plot.legend();
     plot.save("tests/grid1_test").expect("could not save figure");
@@ -85,10 +86,10 @@ pub fn test_grids(coords1:CoordinateSystem,coords2:CoordinateSystem)->(GRID2D,GR
 
 
     let mut plot = Plot::new();
-    let grid2 = GRID2D::new_empty((10,10), (1.0,1.0), (0.0,0.0),0.001, Coordinates::RELATIVE(coords2.clone()));
+    let grid2 = GRID2D::new_empty([10,10], [1.0,1.0], [0.0,0.0],0.001, Coordinates::RELATIVE(coords2.clone()));
     coords2.plot(&mut plot, "purple".to_string());
     grid2.plot_outline(&mut plot, "purple".to_string());
-    grid2.plot_points(&mut plot, PlotPoint::No);
+    grid2.plot_grid_points(&mut plot, PlotPoint::No);
     plot.set_title("Regular Grid on a Coordinate System");
     plot.legend();
     plot.save("tests/grid2_test").expect("could not save figure");
@@ -111,10 +112,10 @@ pub fn test_grids_with_points(coords1:CoordinateSystem,coords2:CoordinateSystem)
     let grid1 = GRID2D::new_empty((10,10), (1.0,1.0), (0.0,0.0),0.001, Coordinates::RELATIVE(coords1.clone()));
     coords1.plot(&mut plot,"green".to_string());
     grid1.plot_outline(&mut plot,"green".to_string());
-    grid1.plot_points(&mut plot, PlotPoint::Given(point_1));
-    grid1.plot_points(&mut plot, PlotPoint::Given(point_2));
-    grid1.plot_points(&mut plot, PlotPoint::Given(point_3));
-    grid1.plot_points(&mut plot, PlotPoint::Given(point_4));
+    grid1.plot_grid_points(&mut plot, PlotPoint::Given(point_1));
+    grid1.plot_grid_points(&mut plot, PlotPoint::Given(point_2));
+    grid1.plot_grid_points(&mut plot, PlotPoint::Given(point_3));
+    grid1.plot_grid_points(&mut plot, PlotPoint::Given(point_4));
 
     plot.set_title("Regular Grid on a Coordinate System");
     //plot.legend();
@@ -134,10 +135,10 @@ pub fn test_grids_with_points(coords1:CoordinateSystem,coords2:CoordinateSystem)
     coords2.plot(&mut plot, "purple".to_string());
     grid2.plot_outline(&mut plot, "purple".to_string());
 
-    grid2.plot_points(&mut plot, PlotPoint::Given(point_1));
-    grid2.plot_points(&mut plot, PlotPoint::Given(point_2));
-    grid2.plot_points(&mut plot, PlotPoint::Given(point_3));
-    grid2.plot_points(&mut plot, PlotPoint::Given(point_4));
+    grid2.plot_grid_points(&mut plot, PlotPoint::Given(point_1));
+    grid2.plot_grid_points(&mut plot, PlotPoint::Given(point_2));
+    grid2.plot_grid_points(&mut plot, PlotPoint::Given(point_3));
+    grid2.plot_grid_points(&mut plot, PlotPoint::Given(point_4));
 
     plot.set_title("Regular Grid on a Coordinate System");
     //plot.legend();
@@ -157,10 +158,10 @@ pub fn test_projection(coords1:CoordinateSystem,coords2:CoordinateSystem){
     let grid1 = GRID2D::new_empty((10,10), (1.0,1.0), (0.0,0.0),0.001, Coordinates::RELATIVE(coords1.clone()));
     coords1.plot(&mut plot,"green".to_string());
     grid1.plot_outline(&mut plot,"green".to_string());
-    grid1.plot_points(&mut plot, PlotPoint::Given(point_1));
-    grid1.plot_points(&mut plot, PlotPoint::Given(point_2));
-    grid1.plot_points(&mut plot, PlotPoint::Given(point_3));
-    grid1.plot_points(&mut plot, PlotPoint::Given(point_4));
+    grid1.plot_grid_points(&mut plot, PlotPoint::Given(point_1));
+    grid1.plot_grid_points(&mut plot, PlotPoint::Given(point_2));
+    grid1.plot_grid_points(&mut plot, PlotPoint::Given(point_3));
+    grid1.plot_grid_points(&mut plot, PlotPoint::Given(point_4));
 
     plot.set_title("Regular Grid on a Coordinate System");
     //plot.legend();
@@ -181,14 +182,16 @@ pub fn test_projection(coords1:CoordinateSystem,coords2:CoordinateSystem){
     coords2.plot(&mut plot, "purple".to_string());
     grid2.plot_outline(&mut plot, "purple".to_string());
 
-    grid2.plot_points(&mut plot, PlotPoint::Given(point_1));
-    grid2.plot_points(&mut plot, PlotPoint::Given(point_2));
-    grid2.plot_points(&mut plot, PlotPoint::Given(point_3));
-    grid2.plot_points(&mut plot, PlotPoint::Given(point_4));
+    grid2.plot_grid_points(&mut plot, PlotPoint::Given(point_1));
+    grid2.plot_grid_points(&mut plot, PlotPoint::Given(point_2));
+    grid2.plot_grid_points(&mut plot, PlotPoint::Given(point_3));
+    grid2.plot_grid_points(&mut plot, PlotPoint::Given(point_4));
 
     plot.set_title("Regular Grid on a Coordinate System");
     //plot.legend();
     plot.save("tests/grid2_points_test").expect("could not save figure");
 
 }
+
+ */
 

@@ -11,21 +11,25 @@ use crate::inputs::power_spectrum::PowerSpectrum;
 pub struct SpectralResponseCurve {
     pub grid1d: GRID1D,
     pub data: Vec<(usize, f64)>, //a vector of values (point number on grid, data value at that point)
+    //TODO: Remove this
     pub label: String,
+    //TODO: Remove this
     pub dat_path: String, //None, list (combination), or multiline, or single line regualr
+    pub units:Units
 }
 
 
 impl SpectralResponseCurve {
 
-    pub fn new(label:String, grid1d: GRID1D,dat_path:String,n:usize,delineator:&str)-> SpectralResponseCurve{
+    pub fn new(label:String, grid1d: GRID1D,dat_path:String,n:usize,delineator:&str,units:Units)-> SpectralResponseCurve{
         let mut new = SpectralResponseCurve{
             grid1d,
             data:vec![],
             label,
+            units,
             dat_path
         };
-        new.load_data(n,delineator);
+        new.load_data(n,delineator,units);
         new
 
     }
@@ -51,7 +55,7 @@ impl SpectralResponseCurve {
 
     }
     
-    pub fn load_data(&mut self,n:usize,delineator:&str) {
+    pub fn load_data(&mut self,n:usize,delineator:&str,units:Units) {
         assert_eq!(0, self.data.len(), "Loading data {:?} into would overwrite current data", self.label);
         println!("Loading {:?} into {:?}", self.dat_path, self.label);
         let start = Instant::now();
@@ -100,9 +104,12 @@ impl SpectralResponseCurve {
        // println!("The first record is {:?} and the last is {:?}, snapping to grid: {:?}", data[0], data[data.len() - 1], self.grid1d);
         let mut snapped_data = Vec::new();
         for values in data {
-            let location = values[0]*self.grid1d.scale;
+            //TODO reimplement scale here
+
+            let location =Regular::try_from(values[0]);
             let data_point = values[n];
-            let index = self.grid1d.snap(location as f64);
+
+            let index = self.grid1d.snap(location,units).expect("Could not grid point");
             snapped_data.push((index,data_point)) //TODO this must change to plot multiple
         }
         self.data = snapped_data;
@@ -112,55 +119,31 @@ impl SpectralResponseCurve {
         assert!(new_grid.snap_precision <= self.grid1d.snap_precision, "Snap precision of new grid must be less than or equal to that of the original grid");
         self.data.sort_by_key(|x| x.0); //TODO move this into a validation function
         let mut new_data = Vec::new();
-        for point in 0..new_grid.num() {
-            let new_location = new_grid.locate_grid_point(point);
-            let value = match self.grid1d.inside_or_outside(new_location) {
-                Location1D::TooHigh => {
-                    //println!("new gridding {:?},location is {:?}, too high", point, new_location);
-                    self.data[self.data.len() - 1].1.clone()
-
-                }
-                Location1D::TooLow => {
-                    //println!("new gridding {:?},location is {:?}, too low", point, new_location);
-                    self.data[0].1.clone()
-                }
-                Location1D::JustRight => {
-                    match self.grid1d.find_neighbors(new_location) {
-                        Neighbors::Two(lower_index, upper_index) => {
-                          //  println!("new gridding {:?},location is {:?}, just right, two neiborhs: {:?}", point, new_location, (lower_index, upper_index));
-                            let lower = self.grid1d.locate_grid_point(lower_index);
-                            let upper = self.grid1d.locate_grid_point(upper_index);
-                            let lower_delta = new_location - lower;
-                            let upper_delta = upper - new_location;
-                            let lower_weight = lower_delta / (lower_delta + upper_delta);
-                            let upper_weight = upper_delta / (lower_delta + upper_delta);
-                            //let upper_data = self.get_data(upper_index);
-                            // let lower_data = self.get_data(lower_index);
-
-                            let upper_data = self.get_data(upper_index);
-
-                            let lower_data = self.get_data(lower_index);
-                            //assert_eq!(upper_data.units, lower_data.units,"Can not interpolate between points with data of different units. This shouldn't happen.... Something is suspicious with your grid.");
-
-
-                            let new_value = upper_data*upper_weight+lower_data*lower_weight;//upper_data.iter().zip(lower_data.iter()).map(|(a, b)|
-                               // a * upper_weight + b * lower_weight).collect();
-
-                            new_value
-                        }
-                        Neighbors::One(snap) => { self.get_data(snap) }
-                    }
+        for point in 0..new_grid.num_points() {
+            let new_location = Regular::try_from(new_grid.locate_grid_point(point));
+            let value = match self.grid1d.locate(new_location,self.units){
+                Location::Higher => {self.data[self.data.len() - 1].1}
+                Location::Lower => {self.data[0].1}
+                Location::Snapped(index) => {self.data[index].1}
+                Location::Between(lower, upper, lower_weight) => {
+                    let lower = self.data[lower].1;
+                    let upper = self.data[upper].1;
+                    let upper_weight = Regular::try_from(1.0)-lower_weight;
+                    (upper*upper_weight+lower*lower_weight).value()
                 }
             };
             new_data.push((point, value))
         }
-        //let mut new_frequency_file = (*self).clone();
         self.data = new_data;
         self.grid1d = new_grid.clone();
     }
 //TODO implement partial equality for 1d Grids
 
     pub fn compose(mut responses:Vec<SpectralResponseCurve>) -> SpectralResponseCurve{
+        for i in 0..responses.len()-1{
+            assert!(responses[i].units == responses[i+1].units, "Can not compose responses with different units")
+        }
+        //TODO need to verify that the units are handeled
         let grid = responses[0].grid1d.clone();
         let mut new_data = responses[0].data.clone();
         //TODO should add in verification
@@ -168,7 +151,7 @@ impl SpectralResponseCurve {
         for response in responses[1..].iter_mut() {
             response.re_grid(&grid);
             labels.push(response.label.clone());
-            for index in 0..grid.num(){
+            for index in 0..grid.num_points(){
                 let value = response.get_data(index);
                 new_data[index].1 *= value;
             }
@@ -177,6 +160,7 @@ impl SpectralResponseCurve {
             grid1d: grid.clone(),
             data: new_data.clone(),
             label: "Composition of some stuff (TODO: ADD WHICH STUFF))".to_string(),
+            units: responses[0].units,
             dat_path: "N/A".to_string(), //TODO add alterantive data
         }
 

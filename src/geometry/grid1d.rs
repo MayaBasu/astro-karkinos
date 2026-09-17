@@ -2,7 +2,7 @@ use std::cmp::{Ordering, PartialOrd};
 use crate::geometry::geometry::*;
 use plotpy::{Curve, Plot, Text};
 use rand::RngExt;
-
+use crate::geometry::GridingError;
 
 pub enum Location{
     Higher,
@@ -30,7 +30,7 @@ pub struct GRID1D {
     num_steps: usize,
     minimum_value: Regular,
     maximum_value: Regular,
-    snap_precision: Regular,
+    pub snap_precision: Regular,
 
 }
 
@@ -58,8 +58,9 @@ impl GRID1D {
         assert!(relative_snap_precision < Regular::try_from(0.5),
                 "relative snap precision must be less than 0.5");
 
-        let step_size = (maximum_value-minimum_value)/ Regular::from(number_of_points-1);
+        let step_size = (maximum_value-minimum_value)/ Regular::try_from((number_of_points-1) as f64);
         let snap_precision = relative_snap_precision * step_size;
+        let num_steps = number_of_points-1;
 
         GRID1D {
             num_steps,
@@ -81,7 +82,7 @@ impl GRID1D {
         let high = points[num - 1];
         let low = points[0];
         assert!(low < high, "First point is not lower than last point");
-        let expected_interval = (high - low) / (num as f64 - 1.0);
+        let expected_interval = (high - low) / Regular::try_from(num as f64 - 1.0);
         let snap_precision = relative_snap_precision*expected_interval;
         (0..num - 1).for_each(|i| {
             assert!(points[i + 1] > points[i],
@@ -92,7 +93,7 @@ impl GRID1D {
         GRID1D {
             units,
             step_size: expected_interval,
-            num_steps,
+            num_steps:num-1,
             minimum_value: low,
             maximum_value: high,
             snap_precision,
@@ -115,12 +116,12 @@ impl GRID1D {
     }
 
     pub fn locate_grid_point(&self, grid_number: usize) -> f64 {
-        assert!((grid_number <= self.num() - 1) && (grid_number >= 0), "Grid number must be between 0 and num_points-1 inclusive");
-        self.minimum_value + self.step_size * grid_number as f64
+        assert!((grid_number <= self.num_points() - 1) && (grid_number >= 0), "Grid number must be between 0 and num_points-1 inclusive");
+        (self.minimum_value + self.step_size * grid_number as f64).value()
     }
 
     pub fn grid_width(&self) -> Regular {
-        self.step_size * (self.num() - 1) as f64
+        self.step_size * (self.num_points() - 1) as f64
     }
 
     pub fn random_point(&self) -> Regular {
@@ -160,6 +161,16 @@ impl GRID1D {
     }
 
 
+    pub fn snap(&self, value:Regular, units:Units)-> Result<usize, GridingError>{
+        match self.locate(value, units){
+            Location::Higher => {Err(GridingError)}
+            Location::Lower => {Err(GridingError)}
+            Location::Snapped(location) => {Ok(location)}
+            Location::Between(_, _, _) => {Err(GridingError)}
+        }
+    }
+
+
     pub fn plot_gridpoints(&self, plot: &mut Plot, label:String, color:String) {
 
         let mut grid_points = Curve::new();
@@ -175,7 +186,7 @@ impl GRID1D {
             .set_fontsize(5.0);
 
         grid_points.points_begin();
-        for point in 0..self.num() {
+        for point in 0..self.num_points() {
             let point_location = self.locate_grid_point(point);
             grid_points.points_add(point_location, 0.0);
             let label = format!("{}", point);

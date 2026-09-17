@@ -103,11 +103,12 @@ impl FullSpectrumSourceList {
     pub fn apply_spatial_effect(&mut self,effect:SpatialEffect){
         let start = Instant::now();
         for source in &mut self.sources{
-            let scale = match effect.grid.inside_or_outside(&source.point){
-                grid2d::Location::Outside => continue,
-                grid2d::Location::Inside => effect.get_data(&source.point)
+            if effect.grid.is_point_inside(&source.point){
+                let scale = effect.get_data(&source.point);
+                source.scale(scale)
+            }else{
+                continue
             };
-            source.scale(scale)
         }
         println!("Applied spatial effect {:?} to {:?} sources in {:?} ms",effect.label,self.sources.len(),start.elapsed().as_millis())
     }

@@ -74,7 +74,7 @@ impl SpatialEffect{
 
 
     pub fn get_data_at_grid_index(&self, grid_number:usize)->f64{
-        let (x,y) = self.grid.xy_indices(grid_number);
+        let [x,y] = self.grid.xy_indices(grid_number);
         self.data[y][x]
     }
 
@@ -93,9 +93,9 @@ impl SpatialEffect{
            .into_iter().
            zip(interpolation_data.coefficients)
            .map(|(point,coefficient)|{
-               self.get_data_at_grid_index(point)*coefficient
+               (self.get_data_at_grid_index(point)*coefficient).value()
            }).sum();
-       sum/interpolation_data.normalization
+       (Regular::try_from(sum)/interpolation_data.normalization).value()
    }
     
 }

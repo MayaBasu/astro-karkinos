@@ -72,7 +72,7 @@ impl PSF {
             data,
             x_pixels: x_num,
             y_pixels: y_num,
-            center: Point::new(Regular::try_from(center_x),Regular::try_from(center_y),Coordinates::ABSOLUTE),
+            center: Point::new(center_x,center_y,&ABSOLUTE_COORDINATES),
             size: (size_x,size_y),
         }
     }
@@ -86,7 +86,7 @@ impl PSF {
         println!("Trying to write to {path}, {:?}",data);
         let mut primary_hdu = Hdu::new(&[64, 64], data);
         println!("Done making hdu");
-        let (x,y) = self.center.as_absolute().values();
+        let (x,y) = self.center.to_absolute().values();
         println!("x,y,{x} {y}");
         primary_hdu.insert(center_keys.0,x.to_string().as_str() );
         primary_hdu.insert(center_keys.1,y.to_string().as_str() );
@@ -99,9 +99,11 @@ impl PSF {
 
     }
 
-    pub fn snap_to_grid(&self, grid: &GRID2D) -> usize{
-        let index = grid.snap(self.center.clone());
-        index
+    pub fn snap_to_grid(&self, grid: &GRID2D) -> Result<usize, GridingError>{
+        match grid.snap(&self.center.clone()) {
+            Ok(grid_number) => {Ok(grid_number)}
+            Err(_) => {Err(GridingError)}
+        }
     }
 
 
@@ -179,13 +181,15 @@ impl PsfGrid{
             let path = path.unwrap().path();
 
             let frame = PSF::load_file(
-                path,
+                path.clone(),
                 (Load::FromKey(self.center_fits_keys.0.to_string()), Load::FromKey(self.center_fits_keys.1.to_string())),
                 (Load::FromValue(self.grid.x_size()),Load::FromValue(self.grid.y_size())),
                 x_num,y_num,
             );
 
-            let frame_index =frame.snap_to_grid(&self.grid);
+            let frame_index = frame.snap_to_grid(&self.grid).expect(
+                &format!("Could not snap PSF file {:?} to grid",path));
+            
             data.push((frame_index,frame))
         }
         data.sort_by_key(|x|x.0);
@@ -254,7 +258,7 @@ impl PsfGrid{
                             q21.1.data.into_iter().flatten().zip(
                                 q22.1.data.into_iter().flatten()))).map(
                         |(q11,(q12,(q21,q22)))| {
-                            (q11*c11  + q12*c12  + q21*c21  + q22*c22 )/interpolation_data.normalization
+                            ((q11*c11  + q12*c12  + q21*c21  + q22*c22 )/interpolation_data.normalization).value()
                         }).collect();
                 PSF::repack_data(interpolated_data)
 
@@ -275,7 +279,7 @@ impl PsfGrid{
                     q1.1.data.into_iter().flatten().zip(
                         q2.1.data.into_iter().flatten()).map(
                         |(q1,q2)| {
-                            (q1*c1 + q2*c2 )/interpolation_data.normalization
+                            ((q1*c1 + q2*c2 )/interpolation_data.normalization).value()
                         }).collect();
                 PSF::repack_data(interpolated_data)
 
