@@ -38,11 +38,11 @@ impl Mul<Regular> for f64 {
 }
 
 impl GRID2D {
-    pub fn new_empty([x_num, y_num]: [usize;2],
-                     [x_step_size, y_step_size]: [f64;2],
-                     center: Point,
-                     relative_snap_precision: f64,
-                     coordinate_system: CoordinateSystem,
+    pub fn new([x_num, y_num]: [usize;2],
+               [x_step_size, y_step_size]: [f64;2],
+               center: Point,
+               relative_snap_precision: f64,
+               coordinate_system: CoordinateSystem,
     ) -> GRID2D {
 
         let xy_num = [x_num,y_num];
@@ -73,12 +73,12 @@ impl GRID2D {
         &self.coordinate_system
     }
     pub fn xy_num(&self)-> [usize;2]{
-        self.xy_num()
+        self.xy_num
     }
     pub fn y_num(&self)->usize {self.xy_num[1]}
     pub fn x_num(&self)->usize {self.xy_num[0]}
     pub fn center(&self)->Point{
-        self.center()
+        self.center
     }
     pub fn xy_step_size(&self) -> Point{
         Point::new_from_regular(
@@ -107,13 +107,13 @@ impl GRID2D {
     }
     pub fn corner(&self)->Point{
         let half_size = self.size()/2.0;
-        self.corner()-half_size
+        self.center-half_size
 
     }
     pub fn xy_indices(&self, grid_number: usize) -> [usize;2] {
-        assert!((grid_number <= self.num_points() - 1) && (grid_number >= 0));
+        assert!((grid_number <= self.num_points() - 1));
         let x_index = grid_number % self.xy_num[0];
-        let y_index = (grid_number - x_index) / self.xy_num[1];
+        let y_index = (grid_number - x_index) / self.xy_num[0];
         [x_index, y_index]
     }
     pub fn grid_number(&self, x_index: usize, y_index: usize) -> usize {
@@ -123,9 +123,12 @@ impl GRID2D {
     }
     pub fn locate(&self, grid_number: usize) -> Point {
         let [x_index, y_index] = self.xy_indices(grid_number);
+        println!("{:?}  {:?}",[x_index,y_index],self.xy_step_size);
         let delta_x = x_index*self.xy_step_size[0];
         let delta_y = y_index*self.xy_step_size[1];
-        let corner = self.corner();
+       // println!("{delta_x} {delta_y}");
+        let corner = self.corner().transform_to(&self.coordinate_system);
+        //println!("{:?} {:?}  {:?}",delta_y,delta_x,corner);
 
         Point::new_from_regular(
             corner.x + delta_x,
@@ -320,11 +323,11 @@ impl GRID2D {
         }
     }
 
-    pub fn plot_grid_points(&self, plot: &mut Plot, label:String) {
+    pub fn plot_grid_points(&self, plot: &mut Plot, color:String, label:String) {
         let mut grid_points = Curve::new();
         grid_points.set_line_style("none")
             .set_label(format!("Grid points: {:?}", label).as_str())
-            .set_marker_color("blue")
+            .set_marker_color(&*color)
             .set_marker_every(1)
             .set_marker_size(7.0)
             .set_marker_style(".");
@@ -333,25 +336,28 @@ impl GRID2D {
         corner
             .set_label("Corner")
             .set_line_style("none")
-            .set_marker_color("#eeea83")
             .set_marker_every(1)
             .set_marker_size(10.0)
             .set_marker_style(".");
 
 
         let mut grid_numbers = Text::new();
-        grid_numbers.set_color("purple")
+        grid_numbers.set_color(&*color)
             .set_fontsize(5.0);
+        println!("ok {:?}",self.num_points());
 
 
         grid_points.points_begin();
         for point in 0..self.num_points() {
+            println!("ok");
             let point_location = self.locate(point).to_absolute();
+            println!(" {:?}",point_location);
             grid_points.points_add(point_location.x.value(), point_location.y.value());
             let label = format!("{}", point);
             grid_numbers.draw(point_location.x.value(), point_location.y.value(), label.as_str());
         }
         grid_points.points_end();
+        println!("ok");
 
 
         corner.points_begin();
@@ -379,7 +385,6 @@ impl GRID2D {
             .set_label("Frame")
             .set_line_style("solid")
             .set_line_width(1.0)
-            .set_marker_color("purple")
             .set_marker_every(1)
             .set_marker_size(10.0)
             .set_marker_style(".");
@@ -404,7 +409,7 @@ impl GRID2D {
 
 
         let mut extra_point = Curve::new();
-        extra_point.set_marker_color("#eeea83")
+        extra_point
             .set_marker_every(1)
             .set_marker_size(10.0)
             .set_line_style("none")
@@ -418,10 +423,13 @@ impl GRID2D {
         plot.add(&frame);
 
     }
+    pub fn plot(&self, plot:&mut Plot, color:&str,label:&str){
+        self.plot_outline_2(plot,color.to_string(),label.to_string());
+        self.plot_grid_points(plot,color.to_string(),label.to_string());
+    }
 
 
-
-    pub fn plot_outline(&self, plot: &mut Plot, color: String, label: String) {
+    pub fn plot_outline_2(&self, plot: &mut Plot, color: String, label: String) {
 
         let mut outline = Curve::new();
         outline.set_line_width(1.0)
@@ -438,13 +446,14 @@ impl GRID2D {
 
 
         let p0 = self.locate(self.grid_number(0,0)).to_absolute();
-        let p1 = self.locate(self.grid_number(0,self.y_num())).to_absolute();
-        let p2 = self.locate(self.grid_number(self.x_num(),self.y_num())).to_absolute();
-        let p3 = self.locate(self.grid_number(self.x_num(),0)).to_absolute();
+        let p1 = self.locate(self.grid_number(0,self.y_num()-1)).to_absolute();
+        let p2 = self.locate(self.grid_number(self.x_num()-1,self.y_num()-1)).to_absolute();
+        let p3 = self.locate(self.grid_number(self.x_num()-1,0)).to_absolute();
         p0.add_to_curve(&mut outline);
         p1.add_to_curve(&mut outline);
         p2.add_to_curve(&mut outline);
         p3.add_to_curve(&mut outline);
+        p0.add_to_curve(&mut outline);
 
         outline.points_end();
 

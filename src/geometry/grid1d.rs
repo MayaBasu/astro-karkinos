@@ -1,14 +1,45 @@
 use std::cmp::{Ordering, PartialOrd};
+use egui::Key::P;
 use crate::geometry::geometry::*;
 use plotpy::{Curve, Plot, Text};
 use rand::RngExt;
 use crate::geometry::GridingError;
-
+#[derive(PartialEq,Debug)]
 pub enum Location{
     Higher,
     Lower,
     Snapped(usize),
-    Between(usize,usize,Regular)
+    Between(usize,usize,f64)
+}
+
+impl PartialEq for GRID1D{
+    fn eq(&self, other: &Self) -> bool {
+        let snap_precision = f64::max(self.snap_precision.value(),other.snap_precision.value());
+        //TODO: add in automatic unit conversion
+        if (self.minimum_value()-other.minimum_value()) > snap_precision*2.0{
+            println!("1D Grids have minimum values differing by more than twice the greatest of their snap precisions");
+            return false
+        }
+        if (self.maximum_value()-other.maximum_value()) > snap_precision*2.0{
+            println!("1D Grids have maximum values differing by more than twice the greatest of their snap precisions");
+            return false
+        }
+        if (self.step_size()-other.step_size()) > snap_precision*2.0{
+            println!("1D Grids have step sizes differing by more than twice the greatest of their snap precisions");
+            return false
+        }
+        if (self.num_steps-other.num_steps) >0 {
+            println!("Grids have different numbers of steps");
+            return false
+        }
+        if (self.units != other.units){
+            println!("Grids must have the same units, automatic conversion is not yet implemented");
+            return false
+        }
+        true
+
+
+    }
 }
 
 
@@ -43,7 +74,7 @@ pub enum Units{
 
 
 impl GRID1D {
-    pub fn new(
+    pub fn new_from_regular(
         number_of_points: usize,
         minimum_value: Regular,
         maximum_value: Regular,
@@ -71,11 +102,29 @@ impl GRID1D {
             units
         }
     }
+
+
+
+    pub fn new(
+        number_of_points: usize,
+        minimum_value: f64,
+        maximum_value: f64,
+        relative_snap_precision: f64,
+        units: Units,
+
+    ) -> GRID1D {
+        Self::new_from_regular(number_of_points,
+        Regular::try_from(minimum_value),
+        Regular::try_from(maximum_value),
+        Regular::try_from(relative_snap_precision),
+        units)
+    }
     pub fn num_points(&self)-> usize{
         self.num_steps + 1
     }
 
-    pub fn from_values(points: Vec<f64>, relative_snap_precision: Regular, units:Units) -> GRID1D {
+    pub fn from_values(points: Vec<f64>, relative_snap_precision: f64, units:Units) -> GRID1D {
+        let relative_snap_precision = Regular::try_from(relative_snap_precision);
         let num = points.len();
         assert!(num >= 2, "Need at least 2 points to make a grid");
         let points:Vec<Regular> = points.iter().map(|f|Regular::try_from(*f)).collect();
@@ -87,7 +136,7 @@ impl GRID1D {
         (0..num - 1).for_each(|i| {
             assert!(points[i + 1] > points[i],
                     "Failed to make grid because points must monotonically increase");
-            assert!(((points[i + 1] - points[i]) - expected_interval).abs() < snap_precision,
+            assert!(((points[i + 1] - points[i]) - expected_interval).abs() < 2*snap_precision,
                     " Failed to make grid because points must be evenly spaced")
         });
         GRID1D {
@@ -130,7 +179,7 @@ impl GRID1D {
         self.minimum_value + self.grid_width() * Regular::try_from(scale)
     }
 
-    pub fn locate(&self, value:Regular, unit:Units )-> Location{
+    pub fn locate_regular(&self, value:Regular, unit:Units )-> Location{
         //TODO: Add in automatic unit conversion
         assert_eq!(self.units, unit, "Convert value to same unit as 1D grid before attempting to locate");
 
@@ -150,7 +199,7 @@ impl GRID1D {
             return Location::Snapped(lower.value() as usize)
         };
 
-        let scaled_residual = (delta-lower)/self.step_size;
+        let scaled_residual = ((delta-lower)/self.step_size).value();
 
         Location::Between(
             lower.value() as usize,
@@ -160,9 +209,14 @@ impl GRID1D {
 
     }
 
+    pub fn locate(&self, value:f64, unit:Units )-> Location{
+        self.locate_regular(Regular::try_from(value),unit)
+
+    }
+
 
     pub fn snap(&self, value:Regular, units:Units)-> Result<usize, GridingError>{
-        match self.locate(value, units){
+        match self.locate_regular(value, units){
             Location::Higher => {Err(GridingError)}
             Location::Lower => {Err(GridingError)}
             Location::Snapped(location) => {Ok(location)}
@@ -202,7 +256,7 @@ impl GRID1D {
     pub fn plot_extra_point(&self, value: Regular, units: Units, plot:&mut Plot){
 
         let mut frame_indices = Vec::new();
-        match self.locate(value,units) {
+        match self.locate_regular(value,units) {
             Location::Higher => { frame_indices.push(self.num_steps)}
             Location::Lower => { frame_indices.push(0)}
             Location::Snapped(i) => { frame_indices.push(i)}
@@ -226,6 +280,15 @@ impl GRID1D {
         plot.add(&frame);
 
         }
+    pub fn minimum_value(&self)->f64{
+        self.minimum_value.value()
+    }
+    pub fn maximum_value(&self)->f64{
+        self.maximum_value.value()
+    }
+    pub fn step_size(&self)->f64{
+        self.step_size.value()
+    }
 
 }
 

@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 use std::ops::{Div, Mul, Neg};
 use plotpy::{Curve, Plot};
 use serde::{Deserialize, Serialize};
+use core::ops::*;
 
 /*
 Regular is a type which is ensured to never be NaN or infinite.
@@ -38,7 +39,7 @@ impl Regular{
 
 
 
-impl ::core::ops::Add for Regular {
+impl Add for Regular {
     type Output = Regular;
     fn add(self, rhs: Regular) -> Regular {
         Regular {
@@ -51,7 +52,7 @@ impl Display for Regular {
         self.value().fmt(f)
     }
 }
-impl ::core::ops::Sub for Regular {
+impl Sub for Regular {
     type Output = Regular;
     fn sub(self, rhs: Regular) -> Regular {
         Regular {
@@ -59,7 +60,7 @@ impl ::core::ops::Sub for Regular {
         }
     }
 }
-impl ::core::ops::Mul for Regular {
+impl Mul for Regular {
     type Output = Regular;
     fn mul(self, rhs: Self) -> Self::Output {
         Regular{
@@ -68,8 +69,13 @@ impl ::core::ops::Mul for Regular {
     }
 }
 
-
-impl ::core::ops::Div for Regular {
+impl Mul<[Regular;2]> for Regular {
+    type Output = [Regular;2];
+    fn mul(self, rhs:[Regular;2])-> Self::Output{
+        [rhs[0]*self,rhs[1]*self]
+    }
+}
+impl Div for Regular {
     type Output = Regular;
     fn div(self, rhs: Self) -> Self::Output {
         //check for division by zero
@@ -95,6 +101,7 @@ pub const ABSOLUTE_COORDINATES: CoordinateSystem =  CoordinateSystem{
     center: [Regular{value:0.0},Regular{value:0.0}],
 };
 
+
 impl CoordinateSystem {
     pub fn new(x_axis: [f64;2], y_axis: [f64;2], center: [f64;2]) -> CoordinateSystem {
         assert!(x_axis[0].powi(2) + x_axis[1].powi(2) > 0.0, "Euclidian length of x_axis must be greater than zero");
@@ -107,7 +114,7 @@ impl CoordinateSystem {
         }
     }
 
-    pub fn plot(&self, plot: &mut Plot, color: String, label:String) {
+    pub fn plot_string(&self, plot: &mut Plot, color: String, label:String) {
         let mut x_axis = Curve::new();
 
         x_axis.set_line_width(2.0);
@@ -135,10 +142,14 @@ impl CoordinateSystem {
         plot.add(&x_axis);
         plot.add(&y_axis);
     }
+
+    pub fn plot(&self, plot:&mut Plot, color:&str,label:&str){
+        self.plot_string(plot,color.to_string(),label.to_string())
+    }
 }
 
 
-#[derive(Clone, Debug, Serialize, Deserialize, Copy)]
+#[derive(Clone, Debug, Serialize, Deserialize, Copy,PartialEq)]
 
 pub struct Point {
     pub x: Regular,
@@ -155,7 +166,13 @@ impl Mul<f64> for Regular {
     }
 }
 
+
+
 impl Point {
+
+    pub fn hypot(&self)->f64{
+        (self.x.value().powi(2) + self.y.value().powi(2)).sqrt()
+    }
 
     pub fn add_to_curve(&self, curve:&mut Curve){
         let val = self.to_absolute();
@@ -196,17 +213,19 @@ impl Point {
             self.y * self.coordinate_system.y_axis[1] +
             self.coordinate_system.center[1];
 
+        println!("absolue x absolute y {absolute_x} {absolute_y}");
+
         let det =
-            self.coordinate_system.y_axis[1] * self.coordinate_system.x_axis[0] -
-            self.coordinate_system.y_axis[0] * self.coordinate_system.x_axis[1];
+            new_coordinate_system.y_axis[1] * new_coordinate_system.x_axis[0] -
+                new_coordinate_system.y_axis[0] * new_coordinate_system.x_axis[1];
 
         let proj_x =
-            ((absolute_x - self.coordinate_system.center[0]) * self.coordinate_system.y_axis[1] -
-            (absolute_y - self.coordinate_system.center[1]) * self.coordinate_system.y_axis[0]) / det;
+            ((absolute_x - new_coordinate_system.center[0]) * new_coordinate_system.y_axis[1] -
+            (absolute_y - new_coordinate_system.center[1]) * new_coordinate_system.y_axis[0]) / det;
 
         let proj_y =
-            (-(absolute_x - self.coordinate_system.center[0]) * self.coordinate_system.x_axis[1] +
-            (absolute_y - self.coordinate_system.center[1]) * self.coordinate_system.x_axis[0]) / det;
+            (-(absolute_x - new_coordinate_system.center[0]) * new_coordinate_system.x_axis[1] +
+            (absolute_y - new_coordinate_system.center[1]) * new_coordinate_system.x_axis[0]) / det;
 
         Point::new_from_regular(proj_x, proj_y, &new_coordinate_system)
 
@@ -221,25 +240,39 @@ impl Point {
         (self.x.value(), self.y.value())
     }
 
-    pub fn plot(&self, plot: &mut Plot, color: String) {
+    pub fn plot(&self, plot: &mut Plot, color: &str,label:&str) {
         let mut point = Curve::new();
         point
-            .set_marker_color(&*color)
+            .set_line_color(color)
+            .set_marker_color(color)
             .set_marker_size(7.0)
-            .set_marker_style("*");
+            .set_marker_style("*")
+            .set_line_style("none");
+        if label.len() > 0{
+            point.set_label(label);
+
+            println!("Adding label");
+        };
+        println!("{:?} {:?} {:?}",self.x,self.y,self);
 
         let (x, y) = self.transform_to(&ABSOLUTE_COORDINATES).values();
+        println!("{:?} {:?}",x,y);
+
+
 
         point.points_begin();
         point.points_add(x, y);
         point.points_end();
 
+
+
         plot.add(&point);
+        plot.legend();
     }
 }
 
 
-impl core::ops::Sub for Point{
+impl Sub for Point{
     type Output = Point;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -251,9 +284,7 @@ impl core::ops::Sub for Point{
         }
     }
 }
-
-
-impl core::ops::Sub for &Point{
+impl Sub for &Point{
     type Output = Point;
 
     fn sub(self, rhs: &Point) -> Self::Output {
@@ -266,7 +297,7 @@ impl core::ops::Sub for &Point{
     }
 }
 
-impl core::ops::Div for &Point{
+impl Div for &Point{
     type Output = Point;
 
     fn div(self, rhs: &Point) -> Self::Output {
@@ -304,8 +335,7 @@ impl Div for Point{
     }
 
 }
-
-impl core::ops::Add for Point{
+impl Add for Point{
     type Output = Point;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -317,8 +347,6 @@ impl core::ops::Add for Point{
         }
     }
 }
-
-
 impl Neg for Regular{
     type Output = Regular;
 
@@ -338,7 +366,7 @@ impl Mul<Regular> for Point{
     }
 }
 
-impl core::ops::Mul<usize> for Regular{
+impl Mul<usize> for Regular{
     type Output = Regular;
 
     fn mul(self, rhs: usize) -> Self::Output {
@@ -357,7 +385,7 @@ impl Mul<Regular> for usize{
     }
 }
 
-impl core::ops::Div<Regular> for Point {
+impl Div<Regular> for Point {
     type Output = Point;
 
     fn div(self, rhs: Regular) -> Self::Output {
@@ -370,7 +398,7 @@ impl core::ops::Div<Regular> for Point {
     }
 }
 
-impl core::ops::Div<f64> for Point{
+impl Div<f64> for Point{
     type Output = Point;
 
     fn div(self, rhs: f64) -> Self::Output {
@@ -389,7 +417,88 @@ impl core::ops::Div<f64> for Point{
 
 
 
+#[cfg(test)]
+mod tests {
+    use astro_karkinos::geometry::Location;
+    use crate::geometry::{grid1d, Units, GRID1D};
+    use super::*;
 
+    #[test]
+    #[should_panic = "Can not make a coordinate system with x_axis zero length"] // This also works
+    fn zero_length_x_axis() {
+        CoordinateSystem::new([0.,0.],[0.,1.],[0.,0.]);
+    }
+    #[test]
+    #[should_panic = "Can not make a coordinate system with y_axis zero length"] // This also works
+    fn zero_length_y_axis() {
+        CoordinateSystem::new([1.,0.],[0.,0.],[0.,0.]);
+    }
+
+
+    #[test]
+    fn to_absolute_test(){
+
+        let coord_sys_1 = CoordinateSystem::new([2.,0.], [0.,4.], [1.,1.5]);
+        let coord_sys_2 = CoordinateSystem::new([-3.4,-1.3],[3.,4.1],[-1.2,-0.3]);
+
+        let point_0 = Point::new(1.,1.,&ABSOLUTE_COORDINATES);
+        let point_1 = Point::new(1.,1., &coord_sys_1);
+        let point_2 = Point::new(1.,1.,&coord_sys_2);
+
+        let expected_0 = Point::new(1.,1.,&ABSOLUTE_COORDINATES);
+        let expected_1  =Point::new(3.,5.5,&ABSOLUTE_COORDINATES);
+        let expected_2 = Point::new(-1.6,2.5,&ABSOLUTE_COORDINATES);
+
+        //Equivalent expressions
+        assert!((point_1.transform_to(&ABSOLUTE_COORDINATES)-expected_1).hypot() < 0.00001);
+        assert!((point_1.to_absolute()-expected_1).hypot() < 0.00001);
+
+        assert!((point_0.to_absolute()- expected_0).hypot() < 0.00001);
+        assert!((point_2.to_absolute()-expected_2).hypot() < 0.00001);
+
+    }
+
+
+    #[test]
+    fn coordinate_change_test(){
+
+        let coord_sys_1 = CoordinateSystem::new([2.,0.], [0.,4.], [1.,1.5]);
+        let coord_sys_2 = CoordinateSystem::new([-3.4,-1.3],[3.,4.1],[-1.2,-0.3]);
+        
+        let point = Point::new(0.5,1.3, &coord_sys_1);
+        let transformed_point = point.transform_to(&coord_sys_2);
+        //Check the transformation worked correctly
+        let x = transformed_point.x * coord_sys_2.x_axis[0]+
+            transformed_point.y*coord_sys_2.y_axis[0] + coord_sys_2.center[0];
+
+        let y = transformed_point.x * coord_sys_2.x_axis[1]+
+            transformed_point.y*coord_sys_2.y_axis[1] + coord_sys_2.center[1];
+
+        assert!((Point::new_from_regular(x,y,&ABSOLUTE_COORDINATES)-point.to_absolute()).hypot() < 0.00001);
+
+
+    }
+    
+    #[test]
+    fn test_1d_grid() {
+        let grid1d_1 = GRID1D::new(5, -1.5, 3.5, 0.001, Units::mm);
+        let points = vec![-1.5002, -0.4999, 0.5008, 1.5009, 2.4997, 3.4997];
+        let grid1d_2 = GRID1D::from_values(points, 0.001, Units::mm);
+
+
+        let point_1 = -1.;
+        let point_2 = 3.50001;
+        let point_3 = -3.;
+        let point_4 = 5.;
+
+        assert_eq!(grid1d_1.locate(point_1,Units::mm),grid1d::Location::Between(0,1,0.5));
+        assert_eq!(grid1d_1.locate(point_2,Units::mm),grid1d::Location::Snapped(5));
+        assert_eq!(grid1d_1.locate(point_3,Units::mm),grid1d::Location::Lower);
+        assert_eq!(grid1d_1.locate(point_4,Units::mm),grid1d::Location::Higher);
+        assert_eq!(grid1d_1, grid1d_2);
+    }
+
+}
 
 
 

@@ -121,15 +121,15 @@ impl SpectralResponseCurve {
         let mut new_data = Vec::new();
         for point in 0..new_grid.num_points() {
             let new_location = Regular::try_from(new_grid.locate_grid_point(point));
-            let value = match self.grid1d.locate(new_location,self.units){
+            let value = match self.grid1d.locate_regular(new_location,self.units){
                 Location::Higher => {self.data[self.data.len() - 1].1}
                 Location::Lower => {self.data[0].1}
                 Location::Snapped(index) => {self.data[index].1}
                 Location::Between(lower, upper, lower_weight) => {
                     let lower = self.data[lower].1;
                     let upper = self.data[upper].1;
-                    let upper_weight = Regular::try_from(1.0)-lower_weight;
-                    (upper*upper_weight+lower*lower_weight).value()
+                    let upper_weight = Regular::try_from(1.0-lower_weight);
+                    (upper*upper_weight+Regular::try_from(lower*lower_weight)).value()
                 }
             };
             new_data.push((point, value))
