@@ -1,5 +1,5 @@
-use crate::inputs::power_spectrum::*;
-use crate::telescope_components::spectral_response::*;
+use crate::telescope::power_spectrum::*;
+use crate::telescope::spectral_response::*;
 use std::time::Instant;
 
 use rand::distr::{Distribution, Uniform};
@@ -8,14 +8,21 @@ use crate::geometry::*;
 
 use rand_distr::Poisson;
 use self::SpectrumUnits::*;
-use crate::inputs::point_sources::BandUnits::{AverageElectronFlux, Electrons};
-use crate::telescope_components::spatial_effect::SpatialEffect;
+use crate::telescope::point_sources::BandUnits::{AverageElectronFlux, Electrons};
+use crate::telescope::spatial_effect::SpatialEffect;
 
 #[derive(Debug,Clone)]
 pub struct FullSpectrumPointSource {
     pub point: Point,
     pub spectrum: PowerSpectrum,
     pub scale: f64,
+}
+
+#[derive(Debug)]
+pub struct BandPasses {
+    labels: Vec<String>,
+    band_passes: Vec<>
+    
 }
 
 #[derive(Debug)]

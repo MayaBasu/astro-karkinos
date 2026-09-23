@@ -188,9 +188,9 @@ error are not exactly regular you can raise the relative snap precision until th
 tolerance. However, keep the precision of the grid as small as possible for best results when interpolating data. Grids can be defined with
 the .new() method, or by pasing a vector of points:
     ");
-    let grid1d_1 = GRID1D::new(6, -1.5,3.5,0.001,Units::mm);
+    let grid1d_1 = GRID1D::new(6, -1.5, 3.5, 0.001, Grid1DUnits::mm);
     let points = vec![-1.5002,-0.4999,0.5008,1.5009,2.4997,3.4997];
-    let grid1d_2 = GRID1D::from_values(points,0.001,Units::mm);
+    let grid1d_2 = GRID1D::from_values(points, 0.001, Grid1DUnits::mm);
     assert_eq!(grid1d_1,grid1d_2);
 
     writeln!(w,"\n\n\

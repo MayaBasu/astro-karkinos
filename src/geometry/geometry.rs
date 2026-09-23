@@ -13,6 +13,8 @@ Division of Regular values fails if the divisor is 0.
 #[derive(PartialEq, PartialOrd)]
 pub struct Regular{value: f64}
 
+
+
 impl Regular{
     
     pub fn abs(&self)->Regular{
@@ -420,7 +422,7 @@ impl Div<f64> for Point{
 #[cfg(test)]
 mod tests {
     use astro_karkinos::geometry::Location;
-    use crate::geometry::{grid1d, Units, GRID1D};
+    use crate::geometry::{grid1d, Grid1DUnits, GRID1D};
     use super::*;
 
     #[test]
@@ -481,9 +483,9 @@ mod tests {
     
     #[test]
     fn test_1d_grid() {
-        let grid1d_1 = GRID1D::new(5, -1.5, 3.5, 0.001, Units::mm);
+        let grid1d_1 = GRID1D::new(5, -1.5, 3.5, 0.001, Grid1DUnits::mm);
         let points = vec![-1.5002, -0.4999, 0.5008, 1.5009, 2.4997, 3.4997];
-        let grid1d_2 = GRID1D::from_values(points, 0.001, Units::mm);
+        let grid1d_2 = GRID1D::from_values(points, 0.001, Grid1DUnits::mm);
 
 
         let point_1 = -1.;
@@ -491,10 +493,10 @@ mod tests {
         let point_3 = -3.;
         let point_4 = 5.;
 
-        assert_eq!(grid1d_1.locate(point_1,Units::mm),grid1d::Location::Between(0,1,0.5));
-        assert_eq!(grid1d_1.locate(point_2,Units::mm),grid1d::Location::Snapped(5));
-        assert_eq!(grid1d_1.locate(point_3,Units::mm),grid1d::Location::Lower);
-        assert_eq!(grid1d_1.locate(point_4,Units::mm),grid1d::Location::Higher);
+        assert_eq!(grid1d_1.locate(point_1, Grid1DUnits::mm), grid1d::Location::Between(0, 1, 0.5));
+        assert_eq!(grid1d_1.locate(point_2, Grid1DUnits::mm), grid1d::Location::Snapped(5));
+        assert_eq!(grid1d_1.locate(point_3, Grid1DUnits::mm), grid1d::Location::Lower);
+        assert_eq!(grid1d_1.locate(point_4, Grid1DUnits::mm), grid1d::Location::Higher);
         assert_eq!(grid1d_1, grid1d_2);
     }
 

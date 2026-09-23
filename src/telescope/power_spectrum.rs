@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::{BufReader, Write};
-use crate::telescope_components::spectral_response::*;
+use crate::telescope::spectral_response::*;
 use crate::geometry::*;
 
 
@@ -23,56 +23,8 @@ pub struct PowerSpectrum {
 
 impl PowerSpectrum { //https://vitaly.neustroev.net/useful-info/conversions/
     
-    pub fn from_data(grid1d: GRID1D, data:Vec<f64>, units:SpectrumUnits, label:String)-> PowerSpectrum{
-        assert_eq!(grid1d.num_points(), data.len());
-        let data:Vec<(usize,f64)> = data.iter().enumerate()
-            .map(|(i,d)|{(i,*d)}).collect();
-        PowerSpectrum{
-            grid1d,
-            data,
-            units,
-            label,
-        }
-        
-        
-    }
-
-    pub fn write_to_dat(&mut self,path:&str,header:&str){
-        let mut file = File::create(path).expect("Could not create file");
-        file.write_all(format!(
-            "{:?} \n {:?} \n {:?} \n {:?} \n \n \n",
-            self.label, self.units, self.grid1d, header).as_bytes()).expect("Failed to write header");
-
-        for (point,value) in &self.data{
-            let location = self.grid1d.locate_grid_point(*point);
-            file.write_all(format!("\n{:?}   {:?}", location, value).as_bytes()).unwrap();
-        }
-
-    }
-    pub fn convert_to_cgs(&mut self)  {
-      //  println!("Converting {:?} to CGS",self.sum());
-
-        let mut cgs_data = Vec::with_capacity(self.data.len());
-        for (point,value) in &self.data{
-            let lambda = self.grid1d.locate_grid_point(*point);
-           // println!("lambda is {:?}",lambda);
-            let cgs_value = match self.units {
-                SpectrumUnits::F_nu => {value}
-                SpectrumUnits::AbMagnitude => &{
-                    10f64.powf((value + 48.6) / (-2.5)) },
-                SpectrumUnits::Janskys => &{
-                    (10f64).powi(-23)*value },
-                SpectrumUnits::f_lambda => &{
-                    6.63e-27*value*lambda},
-                SpectrumUnits::F_lambda=>&{
-                    3.34e-19*lambda*lambda*value}
-            };
-            cgs_data.push((*point,*cgs_value))
-        }
-        self.data = cgs_data;
-        self.units = SpectrumUnits::F_nu;
-      //  self.sum();
-    }
+   
+    
     pub fn convert_to(&mut self,unit:&SpectrumUnits) {
         self.convert_to_cgs();
      //   println!("Converting to else from ");

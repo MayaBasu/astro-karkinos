@@ -1,4 +1,5 @@
 use std::cmp::{Ordering, PartialOrd};
+use std::fmt::{Display, Formatter};
 use egui::Key::P;
 use crate::geometry::geometry::*;
 use plotpy::{Curve, Plot, Text};
@@ -56,7 +57,7 @@ pub struct GRID1D {
     This is the "absolute snap precision", it is initialized with a relative snap precision
     snap_precision = step_size*relative_snap_precision
      */
-    units: Units,
+    units: Grid1DUnits,
     step_size: Regular,
     num_steps: usize,
     minimum_value: Regular,
@@ -67,9 +68,19 @@ pub struct GRID1D {
 
 #[derive(Clone,Debug,Copy, PartialEq)]
 #[allow(non_camel_case_types)]
-pub enum Units{
+pub enum Grid1DUnits {
     nm,
     mm,
+}
+
+impl Display for Grid1DUnits {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self{
+            Grid1DUnits::nm => {write!(f, "nm")}
+            Grid1DUnits::mm => {write!(f, "mm")}
+        }
+
+    }
 }
 
 
@@ -79,7 +90,7 @@ impl GRID1D {
         minimum_value: Regular,
         maximum_value: Regular,
         relative_snap_precision: Regular,
-        units: Units,
+        units: Grid1DUnits,
 
     ) -> GRID1D {
         assert!(number_of_points > 1,
@@ -110,7 +121,7 @@ impl GRID1D {
         minimum_value: f64,
         maximum_value: f64,
         relative_snap_precision: f64,
-        units: Units,
+        units: Grid1DUnits,
 
     ) -> GRID1D {
         Self::new_from_regular(number_of_points,
@@ -123,7 +134,9 @@ impl GRID1D {
         self.num_steps + 1
     }
 
-    pub fn from_values(points: Vec<f64>, relative_snap_precision: f64, units:Units) -> GRID1D {
+
+
+    pub fn from_values(points: Vec<f64>, relative_snap_precision: f64, units: Grid1DUnits) -> GRID1D {
         let relative_snap_precision = Regular::try_from(relative_snap_precision);
         let num = points.len();
         assert!(num >= 2, "Need at least 2 points to make a grid");
@@ -164,9 +177,17 @@ impl GRID1D {
         self.snap_precision)
     }
 
+    pub fn unit(&self)-> Grid1DUnits {
+        self.units
+    }
+
     pub fn locate_grid_point(&self, grid_number: usize) -> f64 {
         assert!((grid_number <= self.num_points() - 1) && (grid_number >= 0), "Grid number must be between 0 and num_points-1 inclusive");
         (self.minimum_value + self.step_size * grid_number as f64).value()
+    }
+    
+    pub fn locate_grid_points(&self)->Vec<f64>{
+        (0..self.num_steps).map(|i|self.locate_grid_point(i)).collect()
     }
 
     pub fn grid_width(&self) -> Regular {
@@ -179,7 +200,7 @@ impl GRID1D {
         self.minimum_value + self.grid_width() * Regular::try_from(scale)
     }
 
-    pub fn locate_regular(&self, value:Regular, unit:Units )-> Location{
+    pub fn locate_regular(&self, value:Regular, unit: Grid1DUnits) -> Location{
         //TODO: Add in automatic unit conversion
         assert_eq!(self.units, unit, "Convert value to same unit as 1D grid before attempting to locate");
 
@@ -209,13 +230,13 @@ impl GRID1D {
 
     }
 
-    pub fn locate(&self, value:f64, unit:Units )-> Location{
+    pub fn locate(&self, value:f64, unit: Grid1DUnits) -> Location{
         self.locate_regular(Regular::try_from(value),unit)
 
     }
 
 
-    pub fn snap(&self, value:Regular, units:Units)-> Result<usize, GridingError>{
+    pub fn snap(&self, value:Regular, units: Grid1DUnits) -> Result<usize, GridingError>{
         match self.locate_regular(value, units){
             Location::Higher => {Err(GridingError)}
             Location::Lower => {Err(GridingError)}
@@ -253,7 +274,7 @@ impl GRID1D {
             plot.set_figure_size_inches(10.0, 10.0)
             .grid_labels_legend("x", "y");
     }
-    pub fn plot_extra_point(&self, value: Regular, units: Units, plot:&mut Plot){
+    pub fn plot_extra_point(&self, value: Regular, units: Grid1DUnits, plot:&mut Plot){
 
         let mut frame_indices = Vec::new();
         match self.locate_regular(value,units) {
