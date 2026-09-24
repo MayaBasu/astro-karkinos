@@ -1,13 +1,21 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
+use astro_karkinos::geometry::FloatError::ValueNotRegular;
 use crate::geometry::*;
 
 
-trait DATA1D<Unit:Unit>{
-    fn new(grid1d: GRID1D, data: Vec<f64>, unit:Unit) -> Self;
+pub trait DATA1D<Unit:Unit>{
     fn grid(&self)-> GRID1D;
     fn data(&self)-> Vec<f64>;
     fn unit(&self)-> Unit;
+    fn is_data_regular(data:&Vec<f64>)->bool{
+        match data.iter().find(|&x|{
+            !Regular::check(*x)
+        }){
+            Some(_) => {false}
+            _ => {true}
+        }
+    }
     fn value_at_index(&self, index:usize) -> f64{
         assert!(index<=self.grid().num_points(),
                 format!("Data grid only has {:?} points, attempted to access point {:?}",
@@ -15,7 +23,6 @@ trait DATA1D<Unit:Unit>{
                         index));
         self.data()[index].value()
     }
-    
     fn value(&self, location: f64, unit:Grid1DUnits) -> f64{
         let data = self.data();
         match self.grid().locate(location,unit){
@@ -30,7 +37,6 @@ trait DATA1D<Unit:Unit>{
             }
         }
     }
-
     fn values(&self, new_grid: &GRID1D) ->Vec<f64> {
         assert!(new_grid.snap_precision <= self.grid().snap_precision, "Snap precision of new grid must be less than or equal to that of the original grid");
         //TODO: why did I put this assert! in?
@@ -38,7 +44,6 @@ trait DATA1D<Unit:Unit>{
             self.value(*x,new_grid.unit())
         }).collect()
     }
-
     fn write_to_dat(&mut self, header:&str, path:&str){
         let mut file = File::create(path).expect("Could not create file");
         file.write_all(header.as_bytes()).expect("Failed to write header");
@@ -50,8 +55,5 @@ trait DATA1D<Unit:Unit>{
                 .expect("Failed to write data");
         }
     }
-
-
-
 }
 

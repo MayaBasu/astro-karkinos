@@ -1,4 +1,4 @@
-use crate::telescope::power_spectrum::*;
+use crate::telescope::spectrum::*;
 use crate::telescope::spectral_response::*;
 use std::time::Instant;
 

@@ -13,9 +13,24 @@ Division of Regular values fails if the divisor is 0.
 #[derive(PartialEq, PartialOrd)]
 pub struct Regular{value: f64}
 
+pub enum FloatError{
+    ValueNotRegular,
+    ValueIsZero,
+}
+
 
 
 impl Regular{
+    
+    pub fn check(float:f64)->bool{
+        if float.is_nan(){
+            false
+        } else if !float.is_finite(){
+            false
+        }else{
+            true
+        }
+    }
     
     pub fn abs(&self)->Regular{
         Regular{value:self.value.abs()}
