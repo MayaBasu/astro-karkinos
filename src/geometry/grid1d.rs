@@ -71,6 +71,7 @@ pub struct GRID1D {
 pub enum Grid1DUnits {
     nm,
     mm,
+    Hz
 }
 
 impl Display for Grid1DUnits {
@@ -78,6 +79,7 @@ impl Display for Grid1DUnits {
         match &self{
             Grid1DUnits::nm => {write!(f, "nm")}
             Grid1DUnits::mm => {write!(f, "mm")}
+            Grid1DUnits::Hz => {write!(f,"Hz")}
         }
 
     }
@@ -185,7 +187,7 @@ impl GRID1D {
         assert!((grid_number <= self.num_points() - 1) && (grid_number >= 0), "Grid number must be between 0 and num_points-1 inclusive");
         (self.minimum_value + self.step_size * grid_number as f64).value()
     }
-    
+
     pub fn locate_grid_points(&self)->Vec<f64>{
         (0..self.num_steps).map(|i|self.locate_grid_point(i)).collect()
     }

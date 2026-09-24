@@ -136,6 +136,15 @@ impl GRID2D {
             self.coordinate_system()
         )
     }
+    
+    pub fn locate_grid_points(&self)->Vec<Vec<Point>>{
+        (0..self.y_num()).map(|y|{
+            (0..self.x_num()).map(|x|{
+                let grid_point = self.grid_number(x,y);
+                self.locate(grid_point)
+            }).collect()
+        }).collect()
+    }
     pub fn random(&self) -> Point {
         let mut rng = rand::rng();
         let x_scale: f64 = rng.random();

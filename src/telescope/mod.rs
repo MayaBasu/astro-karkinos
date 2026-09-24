@@ -1,7 +1,6 @@
 pub mod detector;
 pub mod psf;
 pub mod spectral_response;
-mod spectra;
-mod detector_effects;
+mod effects;
 pub mod point_sources;
 pub mod spectrum;

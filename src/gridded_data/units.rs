@@ -5,11 +5,11 @@ pub trait Unit:Display + Copy + Clone + Debug + PartialEq{
 
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum SpectralResponseUnit{
+pub enum UnitlessUnit {
     NormalizedFraction
 }
 
-impl Display for SpectralResponseUnit {
+impl Display for UnitlessUnit {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f,"Fractional")
     }

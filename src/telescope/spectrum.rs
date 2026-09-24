@@ -102,15 +102,23 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
         }).collect();
         Spectrum::new(self.grid,new_data,self.units)
     }
-
-    pub fn
-
+    
+    /*
+    pub fn integrate(){
+        
+    }
+    
+     */
+    
+    /*
     pub fn calculate_bands(self, band_passes:Vec<&mut SpectralResponse>){
         band_passes.iter().map(|&band_pass|{
 
         }).collect()
 
     }
+    
+     */
 
 }
 

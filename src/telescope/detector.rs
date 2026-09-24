@@ -5,7 +5,8 @@ use crate::telescope::point_sources;
 
 
 use crate::geometry::*;
-use crate::telescope::spatial_effect::SpatialEffect;
+
+use crate::telescope::effects::SpatialEffect;
 
 pub enum EffectType{
     Exposure(f64),
@@ -71,7 +72,7 @@ impl Detector {
         self.data= data;
     }
     pub fn multiply_effect(&mut self, effect:&SpatialEffect,index:usize, effect_type: EffectType){
-        assert_eq!(effect.grid.num_points(), self.grid.num_points(), "Grids are not equal");
+        assert_eq!(effect.grid().num_points(), self.grid.num_points(), "Grids are not equal");
         for row in 0..self.grid.y_num(){
             for column in 0..self.grid.x_num(){
                 match effect_type{
@@ -84,7 +85,7 @@ impl Detector {
     }
 
     pub fn add_effect(&mut self, effect:&SpatialEffect,index:usize,effect_type: EffectType){
-        assert_eq!(effect.grid.num_points(), self.grid.num_points(), "Grids are not equal");
+        assert_eq!(effect.grid().num_points(), self.grid.num_points(), "Grids are not equal");
         for row in 0..self.grid.y_num(){
             for column in 0..self.grid.x_num(){
                 match effect_type{
