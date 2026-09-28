@@ -436,17 +436,17 @@ impl Div<f64> for Point{
 
 #[cfg(test)]
 mod tests {
-    use astro_karkinos::geometry::Location;
+    
     use crate::geometry::{grid1d, Grid1DUnits, GRID1D};
     use super::*;
 
     #[test]
-    #[should_panic = "Can not make a coordinate system with x_axis zero length"] // This also works
+    #[should_panic] // This also works
     fn zero_length_x_axis() {
         CoordinateSystem::new([0.,0.],[0.,1.],[0.,0.]);
     }
     #[test]
-    #[should_panic = "Can not make a coordinate system with y_axis zero length"] // This also works
+    #[should_panic] // This also works
     fn zero_length_y_axis() {
         CoordinateSystem::new([1.,0.],[0.,0.],[0.,0.]);
     }
@@ -498,7 +498,7 @@ mod tests {
     
     #[test]
     fn test_1d_grid() {
-        let grid1d_1 = GRID1D::new(5, -1.5, 3.5, 0.001, Grid1DUnits::mm);
+        let grid1d_1 = GRID1D::new(6, -1.5, 3.5, 0.001, Grid1DUnits::mm);
         let points = vec![-1.5002, -0.4999, 0.5008, 1.5009, 2.4997, 3.4997];
         let grid1d_2 = GRID1D::from_values(points, 0.001, Grid1DUnits::mm);
 

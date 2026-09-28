@@ -3,7 +3,7 @@ use clap::Parser;
 use crate::geometry::{generate_notebook};
 
 pub mod geometry;
-pub mod tests;
+
 
 pub mod gridded_data;
 

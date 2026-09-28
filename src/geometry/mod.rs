@@ -3,7 +3,6 @@ pub mod grid1d;
 pub mod grid2d;
 mod geometry_documentation;
 
-use plotpy::Plot;
 pub use self::grid1d::*;
 pub use self::grid2d::*;
 pub use self::geometry::*;
@@ -11,7 +10,6 @@ pub use self::geometry_documentation::generate_notebook;
 
 #[cfg(test)]
 mod tests {
-    use rand_distr::num_traits::float::FloatCore;
     use super::*;
     #[test]
     pub fn test_coordinate_transformations(){

@@ -9,6 +9,10 @@ pub enum UnitlessUnit {
     NormalizedFraction
 }
 
+impl Unit for UnitlessUnit{
+
+}
+
 impl Display for UnitlessUnit {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f,"Fractional")
@@ -36,4 +40,6 @@ impl Display for SpectralUnits {
         }
     }
 }
+
+impl Unit for SpectralUnits{}
 

@@ -1,13 +1,14 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
-use astro_karkinos::geometry::FloatError::ValueNotRegular;
+
 use crate::geometry::*;
+use crate::gridded_data::units::Unit;
 
 
-pub trait DATA1D<Unit:Unit>{
-    fn grid(&self)-> GRID1D;
-    fn data(&self)-> Vec<f64>;
-    fn unit(&self)-> Unit;
+pub trait DATA1D<Unit:super::units::Unit>{
+    fn grid(&self)-> &GRID1D;
+    fn data(&self)-> &Vec<f64>;
+    fn unit(&self)-> &Unit;
     fn is_data_regular(data:&Vec<f64>)->bool{
         match data.iter().find(|&x|{
             !Regular::check(*x)
@@ -18,10 +19,10 @@ pub trait DATA1D<Unit:Unit>{
     }
     fn value_at_index(&self, index:usize) -> f64{
         assert!(index<=self.grid().num_points(),
-                format!("Data grid only has {:?} points, attempted to access point {:?}",
+                "{}", format!("Data grid only has {:?} points, attempted to access point {:?}",
                         self.grid().num_points(),
                         index));
-        self.data()[index].value()
+        self.data()[index]
     }
     fn value(&self, location: f64, unit:Grid1DUnits) -> f64{
         let data = self.data();
@@ -49,8 +50,8 @@ pub trait DATA1D<Unit:Unit>{
         file.write_all(header.as_bytes()).expect("Failed to write header");
         file.write_all(format!("| \n{:?} | {:?} |",self.grid().unit(), self.unit()).as_bytes())
             .expect("Failed to write units to file");
-        for (point,value) in &(0..self.grid().num_points()).zip(self.data()){
-            let location = self.grid().locate_grid_point(*point);
+        for (point,value) in (0..self.grid().num_points()).zip(self.data()){
+            let location = self.grid().locate_grid_point(point);
             file.write_all(format!("\n{:?} | {:?}", location, value).as_bytes())
                 .expect("Failed to write data");
         }

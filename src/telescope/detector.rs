@@ -1,12 +1,14 @@
 use std::time::Instant;
 
 use uvex_fitrs::{Fits, Hdu};
-use crate::telescope::point_sources;
+
 
 
 use crate::geometry::*;
 
 use crate::telescope::effects::SpatialEffect;
+
+
 
 pub enum EffectType{
     Exposure(f64),
@@ -76,8 +78,8 @@ impl Detector {
         for row in 0..self.grid.y_num(){
             for column in 0..self.grid.x_num(){
                 match effect_type{
-                    EffectType::Exposure(time) => {self.data[column][row][index] = self.data[column][row][index]*effect.data[column][row]*time;}
-                    EffectType::Once => {self.data[column][row][index] = self.data[column][row][index]*effect.data[column][row];}
+                    EffectType::Exposure(time) => {self.data[column][row][index] = self.data[column][row][index]*effect.data()[column][row]*time;}
+                    EffectType::Once => {self.data[column][row][index] = self.data[column][row][index]*effect.data()[column][row];}
                 }
 
             }
@@ -89,8 +91,8 @@ impl Detector {
         for row in 0..self.grid.y_num(){
             for column in 0..self.grid.x_num(){
                 match effect_type{
-                    EffectType::Exposure(time) => {self.data[column][row][index] = self.data[column][row][index]+effect.data[column][row]*time;}
-                    EffectType::Once => {self.data[column][row][index] = self.data[column][row][index]+effect.data[column][row];}
+                    EffectType::Exposure(time) => {self.data[column][row][index] = self.data[column][row][index]+effect.data()[column][row]*time;}
+                    EffectType::Once => {self.data[column][row][index] = self.data[column][row][index]+effect.data()[column][row];}
                 }
 
             }
@@ -115,6 +117,8 @@ pub struct DetectorArray{
     pub detectors: Vec<Detector>,
     pub coordinate_system: CoordinateSystem
 }
+
+
 
 
 

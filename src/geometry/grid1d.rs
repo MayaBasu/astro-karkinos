@@ -1,6 +1,6 @@
-use std::cmp::{Ordering, PartialOrd};
+
 use std::fmt::{Display, Formatter};
-use egui::Key::P;
+
 use crate::geometry::geometry::*;
 use plotpy::{Curve, Plot, Text};
 use rand::RngExt;
@@ -71,7 +71,7 @@ pub struct GRID1D {
 pub enum Grid1DUnits {
     nm,
     mm,
-    Hz
+    angstroms,
 }
 
 impl Display for Grid1DUnits {
@@ -79,7 +79,7 @@ impl Display for Grid1DUnits {
         match &self{
             Grid1DUnits::nm => {write!(f, "nm")}
             Grid1DUnits::mm => {write!(f, "mm")}
-            Grid1DUnits::Hz => {write!(f,"Hz")}
+            Grid1DUnits::angstroms => {write!(f,"angstroms")}
         }
 
     }
@@ -222,7 +222,11 @@ impl GRID1D {
             return Location::Snapped(lower.value() as usize)
         };
 
-        let scaled_residual = ((delta-lower)/self.step_size).value();
+        println!("{:?} \
+        {:?} \
+        {:?}  {:?}", lower, upper, delta,self.step_size);
+
+        let scaled_residual = ((delta-lower*self.step_size)/self.step_size).value();
 
         Location::Between(
             lower.value() as usize,

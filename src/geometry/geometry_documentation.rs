@@ -1,14 +1,14 @@
 
-use std::fs::{write, File};
+use std::fs::{File};
 use std::io::{BufWriter, Read, Write};
 use crate::geometry::*;
 
 use plotpy::Plot;
 use markdown2pdf;
 use markdown2pdf::config::ConfigSource;
-use std::error::Error;
+
 use markdown2pdf::fonts::FontConfig;
-use markdown2pdf::styling::DocumentConfig;
+
 
 pub fn generate_notebook() {
     let file = File::create("notebook.md").expect("Could not create geometry documentation notebook");
@@ -339,15 +339,9 @@ plot.save('plot_path').expect('Could not plot grids');
     w.flush().expect("jalsejkf");
     // Convert Markdown string to PDF with proper error handling
     let mut mkdn = String::new();
-    let markdown = File::open("notebook.md").expect("trouble reading").read_to_string(&mut mkdn);
+    File::open("notebook.md").expect("trouble reading").read_to_string(&mut mkdn);
 
-   // println!("{:?} {:?}",mkdn, markdown);
-
-    const EMBEDDED: &str = r#"
-        [headings.h1]
-        font_size_pt = 18.0
-        font_weight = "bold"
-    "#;
+  
 
     let font_config = FontConfig::new()
         .with_default_font("Georgia");

@@ -5,11 +5,11 @@ use uvex_fitrs::{Fits, FitsData, FitsDataArray};
 
 
 
-pub trait DATA2D<Unit:Unit>{
+pub trait DATA2D<Unit:super::units::Unit>{
 
-    fn grid(&self)-> GRID2D;
-    fn data(&self)-> Vec<Vec<f64>>;
-    fn unit(&self)-> Unit;
+    fn grid(&self)-> &GRID2D;
+    fn data(&self)-> &Vec<Vec<f64>>;
+    fn unit(&self)-> &Unit;
     fn is_data_regular(data:&Vec<Vec<f64>>)->bool{
         match data.iter().flatten().find(|&x|{
             !Regular::check(*x)
@@ -20,7 +20,7 @@ pub trait DATA2D<Unit:Unit>{
     }
     fn value_at_index(&self, index:usize) -> f64{
         assert!(index<=self.grid().num_points(),
-                format!("Data grid only has {:?} points, attempted to access point {:?}",
+                "{}", format!("Data grid only has {:?} points, attempted to access point {:?}",
                         self.grid().num_points(),
                         index));
         let [x,y] = self.grid().xy_indices(index);
@@ -39,17 +39,19 @@ pub trait DATA2D<Unit:Unit>{
             .into_iter().
             zip(interpolation_data.coefficients)
             .map(|(point,coefficient)|{
-                (self.get_data_at_grid_index(point)*coefficient).value()
+                (self.value_at_index(point)*coefficient).value()
             }).sum();
         (Regular::try_from(sum)/interpolation_data.normalization).value()
     }
 
     fn values(&self, new_grid: GRID2D)-> Vec<Vec<f64>>{
-        new_grid.locate_grid_points()
+        let points = new_grid.locate_grid_points()
             .iter()
             .flatten()
             .map(|point|self.value(point))
-            .chunks(new_grid.x_num()).map(|v|v.to_vec())
+            .collect::<Vec<f64>>();
+
+        points.chunks(new_grid.x_num()).map(|v|v.to_vec())
             .collect()
 
     }

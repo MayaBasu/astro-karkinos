@@ -3,7 +3,7 @@ use crate::geometry::*;
 use crate::geometry::FloatError::ValueNotRegular;
 use crate::gridded_data::{SpectralUnits, Unit, DATA1D};
 use crate::gridded_data::SpectralUnits::*;
-use crate::telescope::spectral_response::SpectralResponse;
+use crate::telescope::effects::{SpatialEffect, SpectralResponse};
 
 pub const kB_CGS:f64 = 1.380649 *10e-16; //erg K−1
 pub const h_CGS:f64 = 6.626069 *10e-27; //erg s
@@ -22,20 +22,20 @@ Spectrum assumptions:
 3. Data values are Regular
  */
 impl DATA1D<SpectralUnits> for Spectrum{
-    fn grid(&self) -> GRID1D {
-        self.grid
+    fn grid(&self) -> &GRID1D {
+        &self.grid
     }
-    fn data(&self) -> Vec<f64> {
-        self.data
+    fn data(&self) -> &Vec<f64> {
+        &self.data
     }
-    fn unit(&self) -> SpectralUnits {
-        self.units
+    fn unit(&self) -> &SpectralUnits {
+        &self.units
     }
 }
 impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
     pub fn new(grid:GRID1D,data:Vec<f64>,units:SpectralUnits)->Spectrum{
         assert_eq!(grid.num_points(),data.len());
-        if !DATA1D::is_data_regular(&data){
+        if !Self::is_data_regular(&data){
             panic!("Failed to initialize new SpectralResponse struct:\
                    data values must not be Nan or inf")
         };
@@ -50,38 +50,45 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
         let data = (0..grid.num_points()).map(|_|value).collect();
         Spectrum::new(grid,data,units)
     }
-    pub fn to_cgs(mut self){
-        let new_data = self.grid.locate_grid_points().zip(self.data).map(|(lambda,value)| {
+    pub fn to_cgs(mut self)->Self{
+        let new_data = self.grid.locate_grid_points().iter().zip(self.data).map(|(lambda,value)| {
             match self.units {
                 F_nu => { value }
-                AbMagnitude => &{
+                AbMagnitude => {
                     10f64.powf((value + 48.6) / (-2.5))
                 },
-                Janskys => &{
+                Janskys => {
                     (10f64).powi(-23) * value
                 },
-                f_lambda => &{
+                f_lambda => {
                     6.63e-27 * value * lambda
                 },
-                F_lambda => &{
+                F_lambda => {
                     3.34e-19 * lambda * lambda * value
                 }
-            };
-        }).collect();
-        self = Spectrum::new(self.grid, new_data, F_nu);
-    }
-    pub fn convert_to(mut self,unit:&SpectralUnits)->Self {
-        self.to_cgs();
-        let new_data = self.grid.locate_grid_points().zip(self.data).map(|(lambda,value)| {
-            match unit {
-                F_nu => {value},
-                F_lambda => &{3.00e18 * value / (lambda.powi(2))},
-                f_lambda => &{1.51e26 * value / lambda},
-                AbMagnitude => &{-2.5 * value.log10() - 48.6},
-                Janskys => &{(10f64).powi(23) * value},
             }
         }).collect();
-        Spectrum::new(self.grid, new_data, unit)
+        self = Spectrum::new(self.grid, new_data, F_nu);
+        self
+    }
+    pub fn convert_to(mut self,unit:&SpectralUnits)->Self {
+        self = self.to_cgs();
+        let new_data = self.grid.locate_grid_points().iter().zip(self.data).map(|(lambda,value)| {
+            match unit {
+                F_nu => {value},
+                F_lambda => {3.00e18 * value / (lambda.powi(2))},
+                f_lambda => {1.51e26 * value / lambda},
+                AbMagnitude => {-2.5 * value.log10() - 48.6},
+                Janskys => {(10f64).powi(23) * value},
+            }
+        }).collect();
+        let result = Spectrum::new(
+            self.grid,
+            new_data,
+            *unit
+        );
+        result
+        
 
 
     }
@@ -94,36 +101,57 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
         Spectrum::new(grid,data,F_lambda)
 
     }
-    pub fn apply_spectral_response(mut self, spectral_response:&mut SpectralResponse)->Self {
+    pub fn apply_spectral_response(self, spectral_response:&mut SpectralResponse)->Self {
         spectral_response.regrid(self.grid);
-        assert_eq!(spectral_response.grid(),self.grid,"Unreachable: Re-grid attempt failed");
-        let new_data = self.data.iter().enumerate().map(|(i,x)|{
+        assert_eq!(*spectral_response.grid(),self.grid,"Unreachable: Re-grid attempt failed");
+        let new_data = self.data.into_iter().enumerate().map(|(i,x)|{
             x*spectral_response.data()[i]
         }).collect();
         Spectrum::new(self.grid,new_data,self.units)
     }
-    
-    /*
-    pub fn integrate(){
-        
+    pub fn integrate(&self)->f64{
+        let average:f64 = self.data.iter().sum::<f64>()/(self.grid.num_points() as f64);
+        //TODO: add in automatic unit conversions
+        println!("WARNING UNIMPLEMENTED");
+        average*self.grid.step_size()
     }
-    
-     */
-    
-    /*
-    pub fn calculate_bands(self, band_passes:Vec<&mut SpectralResponse>){
-        band_passes.iter().map(|&band_pass|{
-
-        }).collect()
-
+    pub fn to_band(self, band_pass: &mut SpectralResponse)->f64{
+        self.apply_spectral_response(band_pass).integrate()
     }
-    
-     */
 
 }
 
 
+pub enum SkyObject{
+    PointSource(Point, Spectrum),
+    Patch(SpatialEffect,Spectrum),
+    Background(SpatialEffect,Spectrum),
+}
 
 
 
+pub trait Input{
+    fn spectrum()-> Spectrum;
+    fn 
+    fn scale() -> f64;
+    fn scale_by(&mut self, factor:f64);
+    fn find_band(&self, band_pass: SpectralResponse) -> f64;
+}
 
+impl Input for SkyObject::PointSource{
+    fn spectrum() -> Spectrum {
+        todo!()
+    }
+
+    fn scale() -> f64 {
+        todo!()
+    }
+
+    fn scale_by(&mut self, factor: f64) {
+        todo!()
+    }
+
+    fn find_band(&self, band_pass: SpectralResponse) -> f64 {
+        todo!()
+    }
+}
