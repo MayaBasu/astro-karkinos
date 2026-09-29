@@ -190,6 +190,11 @@ impl GRID2D {
             new_y,
             self.coordinate_system())
     }
+    
+    pub fn project_fit(&self, point:&Point,fractional_residual:bool)->(usize,usize,f64,f64){
+        let point = self.project_inside(point);
+        self.fit_grid(&point, fractional_residual).unwrap()
+    }
     pub fn fit_grid(&self, point:&Point, fractional_residual: bool) -> Result<(usize,usize,f64,f64), GridingError>{
         if !self.is_point_inside(point){
             println!("Failed to grid point due to it being outside of the grid");

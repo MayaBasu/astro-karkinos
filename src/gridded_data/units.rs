@@ -29,6 +29,25 @@ pub enum SpectralUnits {
     AbMagnitude, //-2.5*log10(f_nu ) - 48.6 in CGS
     Janskys, // ??? who knows
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DetectorUnits {
+    Electrons,
+    AverageElectrons
+}
+
+impl Unit for DetectorUnits{
+    
+}
+
+impl Display for DetectorUnits{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self{
+            DetectorUnits::Electrons => {write!(f, "Electrons")}
+            DetectorUnits::AverageElectrons => {write!(f, "Average Electrons")}
+        }
+    }
+}
 impl Display for SpectralUnits {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self {

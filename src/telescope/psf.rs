@@ -148,7 +148,7 @@ impl PSF {
 #[derive(Debug,Clone)]
 pub struct PsfGrid {
     label:String,
-    grid: GRID2D,
+    grid: crate::geometry::grid2d::GRID2D,
     data:Vec<(usize,PSF)>,
     valid: bool,
     directory_path:String,

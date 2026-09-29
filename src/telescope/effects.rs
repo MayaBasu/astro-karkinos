@@ -77,6 +77,11 @@ impl DATA2D<UnitlessUnit> for SpatialEffect{
     fn data(&self) -> &Vec<Vec<f64>> {
         &self.data
     }
+
+    fn mutable_data(&mut self) -> &mut Vec<Vec<f64>> {
+        &mut self.data
+    }
+
     fn unit(&self) -> &UnitlessUnit {
         &UnitlessUnit::NormalizedFraction
     }

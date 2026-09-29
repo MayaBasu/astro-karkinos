@@ -122,36 +122,3 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
 }
 
 
-pub enum SkyObject{
-    PointSource(Point, Spectrum),
-    Patch(SpatialEffect,Spectrum),
-    Background(SpatialEffect,Spectrum),
-}
-
-
-
-pub trait Input{
-    fn spectrum()-> Spectrum;
-    fn 
-    fn scale() -> f64;
-    fn scale_by(&mut self, factor:f64);
-    fn find_band(&self, band_pass: SpectralResponse) -> f64;
-}
-
-impl Input for SkyObject::PointSource{
-    fn spectrum() -> Spectrum {
-        todo!()
-    }
-
-    fn scale() -> f64 {
-        todo!()
-    }
-
-    fn scale_by(&mut self, factor: f64) {
-        todo!()
-    }
-
-    fn find_band(&self, band_pass: SpectralResponse) -> f64 {
-        todo!()
-    }
-}

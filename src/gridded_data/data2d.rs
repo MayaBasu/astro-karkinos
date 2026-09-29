@@ -1,14 +1,19 @@
-use std::fs::File;
-use std::io::Write;
+
 use crate::geometry::*;
-use uvex_fitrs::{Fits, FitsData, FitsDataArray};
+use uvex_fitrs::{Fits, Hdu};
 
 
+pub enum EffectType{
+    Multiplicative,
+    Additive
+}
 
 pub trait DATA2D<Unit:super::units::Unit>{
 
     fn grid(&self)-> &GRID2D;
     fn data(&self)-> &Vec<Vec<f64>>;
+
+    fn mutable_data(&mut self)->&mut Vec<Vec<f64>>;
     fn unit(&self)-> &Unit;
     fn is_data_regular(data:&Vec<Vec<f64>>)->bool{
         match data.iter().flatten().find(|&x|{
@@ -44,7 +49,7 @@ pub trait DATA2D<Unit:super::units::Unit>{
         (Regular::try_from(sum)/interpolation_data.normalization).value()
     }
 
-    fn values(&self, new_grid: GRID2D)-> Vec<Vec<f64>>{
+    fn re_grid_values(&self, new_grid: GRID2D) -> Vec<Vec<f64>>{
         let points = new_grid.locate_grid_points()
             .iter()
             .flatten()
@@ -56,9 +61,54 @@ pub trait DATA2D<Unit:super::units::Unit>{
 
     }
 
+    fn combine(&mut self, effect: &Self, effect_type: EffectType) {
 
-   
 
+
+        let upper_left_corner = effect.grid()
+            .locate(effect.grid().grid_number(0,0));
+        let lower_left_corner = effect.grid()
+            .locate(effect.grid().grid_number(0,effect.grid().y_num()-1));
+        let lower_right_corner = effect.grid()
+            .locate(effect.grid().grid_number(effect.grid().x_num()-1,effect.grid().y_num()-1));
+
+        let (min_x,min_y,_,_) = self.grid().project_fit(&upper_left_corner,false);
+        let (_,max_y,_,_) = self.grid().project_fit(&lower_left_corner,false);
+        let (max_x,_,_,_) = self.grid().project_fit(&lower_right_corner,false);
+        //TODO:check bounds!
+        (min_y..max_y).zip((min_x..max_x)).for_each(|(i, j)| {
+            let pixel = self.grid().grid_number(i, j);
+            let detector_pixel_position = self.grid().locate(pixel);
+            let effect_value = effect.value(&detector_pixel_position);
+            match effect_type {
+                EffectType::Multiplicative => {
+                    self.mutable_data()[j][i] = self.mutable_data()[j][i] * effect_value;
+                }
+                EffectType::Additive => {
+                    self.mutable_data()[j][i] =self.mutable_data()[j][i] + effect_value;
+                }
+            }
+        });
+    }
+
+    fn add(&mut self, effect: &Self){
+        self.combine(effect, EffectType::Additive)
+    }
+
+
+    fn multiply(&mut self, effect: &Self){
+        self.combine(effect, EffectType::Multiplicative)
+    }
+
+
+    fn write_to_fits(&self, path:&str){
+        let shape = self.grid().xy_num();
+        let primary_hdu = Hdu::new(&shape, self.data().into_iter().flatten().map(|x|*x).collect());
+        //TODO: add header
+        Fits::create(path, primary_hdu).expect(
+            &format!("Failed to write data to FITS at {path}"));
+
+    }
 }
 
 
