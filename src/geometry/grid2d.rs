@@ -15,6 +15,7 @@ impl fmt::Display for GriddingError {
 }
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub enum Corners {
     Four(usize, usize, usize, usize),
     Two(usize, usize),
@@ -208,10 +209,7 @@ impl GRID2D {
             self.xy_step_size[0],
             self.xy_step_size[1],
             self.coordinate_system());
-
-
         let modulus = (delta/step).round();
-
         let residual =
         if fractional_residual{
             delta/step-modulus
@@ -487,14 +485,14 @@ impl GRID2D {
 
     pub fn interpolation_coefficients(&self, point: &Point) -> InterpolationData {
         match self.find_corners(point) {
-            Ok(Corners::Four(Q12, Q22, Q21, Q11)) => { // using the wikipedia convention https://en.wikipedia.org/wiki/Bilinear_interpolation
+            Ok(Corners::Four(Q12, Q11, Q21, Q22 )) => { // using the wikipedia convention https://en.wikipedia.org/wiki/Bilinear_interpolation
 
-                let Q11point = self.locate(Q11);
-                let Q22point = self.locate(Q22);
+                let Q12point = self.locate(Q12);
+                let Q21point = self.locate(Q21);
 
 
-                let (x1, y1) = (Q11point.x, Q11point.y);
-                let (x2, y2) = (Q22point.x, Q22point.y);
+                let (x1, y1) = (Q12point.x, Q12point.y);
+                let (x2, y2) = (Q21point.x, Q21point.y);
                 point.transform_to(&self.coordinate_system);
                 let x = point.x;
                 let y = point.y;
@@ -580,6 +578,7 @@ pub struct InterpolationData {
 
 #[cfg(test)]
 pub mod tests{
+    use crate::geometry::Corners::One;
     use crate::geometry::GRID1D;
     use super::*;
 
@@ -638,6 +637,8 @@ pub mod tests{
         assert_eq!(grid.project_inside(&Point::new(4.6,-8.,&coord)),Point::new(4.5,-8.,&coord));
         assert_eq!(grid.project_inside(&Point::new(4.6,-8.5,&coord)),Point::new(4.5,-8.,&coord));
 
+        assert_eq!(grid.project_inside(&Point::new(4.4,-8.5,&coord)),Point::new(4.4,-8.,&coord));
+
 
 
         let grid = GRID2D::new([2,2],
@@ -649,6 +650,62 @@ pub mod tests{
             vec![Point::new(-0.5,-1.,&coord),Point::new(0.5,-1.,&coord)],
             vec![Point::new(-0.5,1.,&coord),Point::new(0.5,1.,&coord)]];
         assert_eq!(grid.locate_grid_points(), points);
+        check_fit(grid.fit_grid(&Point::new(-0.25,-0.5,&coord),true).unwrap(),(0,0,0.25,0.25));
+        check_fit(grid.fit_grid(&Point::new(0.25,-0.5,&coord),true).unwrap(),(1,0,-0.25,0.25));
+        check_fit(grid.fit_grid(&Point::new(0.25,0.5,&coord),true).unwrap(),(1,1,-0.25,-0.25));
+        check_fit(grid.fit_grid(&Point::new(-0.25,0.5,&coord),true).unwrap(),(0,1,0.25,-0.25));
+        check_fit(grid.fit_grid(&Point::new(-0.16,0.5,&coord),true).unwrap(),(0,1,0.5-0.16,-0.25));
+
+        assert_eq!(grid.fit_grid(&Point::new(4.4,-8.5,&coord),false), Err(GriddingError));
+
+
+        pub fn check_fit(fit_1:(usize,usize,f64,f64),fit_2:(usize,usize,f64,f64)){
+            assert_eq!(fit_1.0, fit_2.0);
+            assert_eq!(fit_1.1,fit_2.1);
+            assert!((fit_1.3-fit_2.3).abs()<NUMERICAL_PRECISION, " {:?} {:?}",fit_1.3,fit_2.3);
+            assert!((fit_1.2-fit_2.2).abs()<NUMERICAL_PRECISION," {:?} {:?}",fit_1.2,fit_2.2);
+
+        }
+
+        let grid = GRID2D::new([3,3],
+                               [1.,2.],
+                               Point::new(0.,0.,&coord),
+                               0.00001,
+                               coord);
+
+        check_fit(grid.fit_grid(&Point::new(-0.16,0.05,&coord),false).unwrap(),(1,1,-0.16,0.05));
+        check_fit(grid.fit_grid(&Point::new(0.16,-0.05,&coord),false).unwrap(),(1,1,0.16,-0.05));
+        check_fit(grid.fit_grid(&Point::new(0.16,-0.05,&coord),true).unwrap(),(1,1,0.16,-0.05/2.0));
+
+
+        assert_eq!(grid.snap(&Point::new(0.000000016,-0.000000005,&coord)),Ok(4));
+        assert_eq!(grid.snap(&Point::new(-1.000000016,-2.000000005,&coord)),Ok(0));
+        assert_eq!(grid.snap(&Point::new(-0.000000016,-2.000000005,&coord)),Ok(1));
+        assert_eq!(grid.snap(&Point::new(-1.000000016,-0.000000005,&coord)),Ok(3));
+
+
+        assert_eq!(grid.find_corners(&Point::new(0.000000016,-0.000000005,&coord)),Ok(One(4)));
+        assert_eq!(grid.find_corners(&Point::new(-1.000000016,-2.000000005,&coord)),Ok(One(0)));
+        assert_eq!(grid.find_corners(&Point::new(-0.000000016,-2.000000005,&coord)),Ok(One(1)));
+        assert_eq!(grid.find_corners(&Point::new(-1.000000016,-0.000000005,&coord)),Ok(One(3)));
+
+
+        assert_eq!(grid.snap(&Point::new(-2.000000016,-0.000000005,&coord)),Err(GriddingError));
+        assert_eq!(grid.snap(&Point::new(0.800000016,-0.200000005,&coord)),Err(GriddingError));
+        assert_eq!(grid.snap(&Point::new(0.003000016,0.007000005,&coord)),Err(GriddingError));
+
+
+        assert_eq!(grid.find_corners(&Point::new(-0.9,-1.9,&coord)),Ok(Corners::Four(0,3,4,1)));
+        assert_eq!(grid.find_corners(&Point::new(0.0,-1.5,&coord)),Ok(Corners::Two(1,4)));
+        assert_eq!(grid.find_corners(&Point::new(0.7,-1.5,&coord)),Ok(Corners::Four(1,4,5,2)));
+        assert_eq!(grid.find_corners(&Point::new(-0.7,1.5,&coord)),Ok(Corners::Four(3,6,7,4)));
+        assert_eq!(grid.find_corners(&Point::new(0.007,1.5,&coord)),Ok(Corners::Four(4,7,8,5)));
+
+
+
+
+
+
 
 
 
