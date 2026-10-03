@@ -27,7 +27,7 @@ pub enum SpectralUnits {
     F_lambda, //ergs per cm^2 per s per angstrom
     f_lambda, //Photons per cm^2 per second per angstrom
     AbMagnitude, //-2.5*log10(f_nu ) - 48.6 in CGS
-    Janskys, // ??? who knows
+    Janskys,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -37,7 +37,7 @@ pub enum DetectorUnits {
 }
 
 impl Unit for DetectorUnits{
-    
+
 }
 
 impl Display for DetectorUnits{

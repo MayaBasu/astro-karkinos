@@ -41,6 +41,10 @@ pub enum FITSType{
 }
 
 impl PSF {
+
+    pub fn scale(mut self, scalar:f64){
+        //self.data = self.data.into_iter().flatten().map(|x|x*scalar).collect().chunk()
+    }
     pub fn load_file(file: PathBuf, center:(Load, Load), size:(Load, Load), x_num:usize, y_num:usize) -> PSF {
         println!("Loading {:?} into a DataFrame ",file);
         let fits = Fits::open(file.clone()).expect("Failed to open FITS file");
@@ -86,7 +90,7 @@ impl PSF {
         println!("Trying to write to {path}, {:?}",data);
         let mut primary_hdu = Hdu::new(&[64, 64], data);
         println!("Done making hdu");
-        let (x,y) = self.center.to_absolute().values();
+        let [x,y] = self.center.to_absolute().values();
         println!("x,y,{x} {y}");
         primary_hdu.insert(center_keys.0,x.to_string().as_str() );
         primary_hdu.insert(center_keys.1,y.to_string().as_str() );
@@ -99,10 +103,10 @@ impl PSF {
 
     }
 
-    pub fn snap_to_grid(&self, grid: &GRID2D) -> Result<usize, GridingError>{
+    pub fn snap_to_grid(&self, grid: &GRID2D) -> Result<usize, GriddingError>{
         match grid.snap(&self.center.clone()) {
             Ok(grid_number) => {Ok(grid_number)}
-            Err(_) => {Err(GridingError)}
+            Err(_) => {Err(GriddingError)}
         }
     }
 
@@ -177,8 +181,15 @@ impl PsfGrid{
         let mut counter = 0;
         for path in paths {
             println!("loading {:?}",path);
-            counter += 1;
+
+
             let path = path.unwrap().path();
+            if !path.clone().into_os_string().into_string().unwrap().contains("fits"){
+                println!("SKIPPING {:?}",path);
+                continue
+            }
+            counter += 1;
+
 
             let frame = PSF::load_file(
                 path.clone(),
@@ -288,6 +299,14 @@ impl PsfGrid{
                 self.data[Q].clone().1.data
             }
         }
+    }
+
+    pub fn psf(&self, index:usize)-> PSF{
+        let (i, psf) = self.data[index].clone();
+        assert_eq!(index,i);
+        psf
+
+
     }
 
 

@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 use crate::geometry::geometry::*;
 use plotpy::{Curve, Plot, Text};
 use rand::RngExt;
-use crate::geometry::GridingError;
+use crate::geometry::GriddingError;
 #[derive(PartialEq,Debug)]
 pub enum Location{
     Higher,
@@ -15,21 +15,30 @@ pub enum Location{
 
 impl PartialEq for GRID1D{
     fn eq(&self, other: &Self) -> bool {
+
+
         let snap_precision = f64::max(self.snap_precision.value(),other.snap_precision.value());
+        //TODO: make this less arbitrary
+        if (self.snap_precision.value() -other.snap_precision.value())/f64::min(self.snap_precision.value(),other.snap_precision.value())>0.1{
+            println!("1D Grids have different snap precision values, {:?} v.s {:?}",self.snap_precision.value(), other.snap_precision.value());
+            return false
+        }
         //TODO: add in automatic unit conversion
-        if (self.minimum_value()-other.minimum_value()) > snap_precision*2.0{
+        if (self.minimum_value()-other.minimum_value()).abs() > snap_precision*2.0{
             println!("1D Grids have minimum values differing by more than twice the greatest of their snap precisions");
             return false
         }
-        if (self.maximum_value()-other.maximum_value()) > snap_precision*2.0{
+        if (self.maximum_value()-other.maximum_value()).abs() > snap_precision*2.0{
             println!("1D Grids have maximum values differing by more than twice the greatest of their snap precisions");
             return false
         }
-        if (self.step_size()-other.step_size()) > snap_precision*2.0{
+        if (self.step_size()-other.step_size()).abs() > snap_precision*2.0{
             println!("1D Grids have step sizes differing by more than twice the greatest of their snap precisions");
             return false
         }
-        if (self.num_steps-other.num_steps) >0 {
+
+
+        if (self.num_steps.abs_diff(other.num_steps)) >0 {
             println!("Grids have different numbers of steps");
             return false
         }
@@ -189,11 +198,11 @@ impl GRID1D {
     }
 
     pub fn locate_grid_points(&self)->Vec<f64>{
-        (0..self.num_steps).map(|i|self.locate_grid_point(i)).collect()
+        (0..self.num_points()).map(|i|self.locate_grid_point(i)).collect()
     }
 
     pub fn grid_width(&self) -> Regular {
-        self.step_size * (self.num_points() - 1) as f64
+        self.maximum_value-self.minimum_value
     }
 
     pub fn random_point(&self) -> Regular {
@@ -242,12 +251,12 @@ impl GRID1D {
     }
 
 
-    pub fn snap(&self, value:Regular, units: Grid1DUnits) -> Result<usize, GridingError>{
+    pub fn snap(&self, value:Regular, units: Grid1DUnits) -> Result<usize, GriddingError>{
         match self.locate_regular(value, units){
-            Location::Higher => {Err(GridingError)}
-            Location::Lower => {Err(GridingError)}
+            Location::Higher => {Err(GriddingError)}
+            Location::Lower => {Err(GriddingError)}
             Location::Snapped(location) => {Ok(location)}
-            Location::Between(_, _, _) => {Err(GridingError)}
+            Location::Between(_, _, _) => {Err(GriddingError)}
         }
     }
 
@@ -319,6 +328,72 @@ impl GRID1D {
 
 }
 
+
+#[cfg(test)]
+pub mod tests{
+    use crate::geometry::Grid1DUnits::mm;
+    use crate::geometry::{GriddingError, Regular};
+    use super::GRID1D;
+    use super::Grid1DUnits;
+    use super::Location;
+
+
+    #[test]
+    fn test_1d_grid() {
+        let grid1d_1 = GRID1D::new(6, -1.5, 3.5, 0.001, Grid1DUnits::mm);
+        let points = vec![-1.5002, -0.4999, 0.5008, 1.5009, 2.4997, 3.4997];
+        let grid1d_2 = GRID1D::from_values(points, 0.001, Grid1DUnits::mm);
+
+
+        let point_1 = -1.;
+        let point_2 = 3.50001;
+        let point_3 = -3.;
+        let point_4 = 5.;
+
+        assert_eq!(grid1d_1.locate(point_1, Grid1DUnits::mm), Location::Between(0, 1, 0.5));
+        assert_eq!(grid1d_1.locate(point_2, Grid1DUnits::mm), Location::Snapped(5));
+        assert_eq!(grid1d_1.locate(point_3, Grid1DUnits::mm), Location::Lower);
+        assert_eq!(grid1d_1.locate(point_4, Grid1DUnits::mm), Location::Higher);
+        assert_eq!(grid1d_1, grid1d_2);
+        assert_eq!(grid1d_1.num_steps, 5);
+        assert_eq!(grid1d_1.num_points(), 6);
+        assert_eq!(grid1d_1.unit(),Grid1DUnits::mm);
+        assert_eq!(grid1d_1.locate_grid_point(2),0.5);
+        assert_eq!(grid1d_1.locate_grid_points(),[-1.5, -0.5, 0.5, 1.5, 2.5, 3.5]);
+        assert_eq!(grid1d_1.grid_width().value(), 5.0);
+        assert!(grid1d_1.random_point().value()>=grid1d_1.minimum_value());
+        assert!(grid1d_1.random_point().value()<=grid1d_1.maximum_value());
+        //-1.5002, -0.4999, 0.5008, 1.5009, 2.4997, 3.4997
+        assert_eq!(grid1d_1.snap(Regular::try_from(0.5),mm),Ok(2));
+        assert_eq!(grid1d_1.snap(Regular::try_from(-1.5002),mm),Ok(0));
+        assert_eq!(grid1d_1.snap(Regular::try_from(-1.51),mm),Err(GriddingError));
+        assert_eq!(grid1d_1.snap(Regular::try_from(3.51),mm),Err(GriddingError));
+        assert_eq!(grid1d_1.snap(Regular::try_from(1.6),mm),Err(GriddingError));
+
+
+
+
+        let grid1 = GRID1D::new(8,-1.2,3.5,0.001,Grid1DUnits::nm);
+
+        assert_eq!(grid1, grid1);
+
+        let grid2 = GRID1D::new(9,-1.2,3.5,0.001,Grid1DUnits::nm);
+        assert_ne!(grid1,grid2);
+
+        let grid2 = GRID1D::new(8,-0.2,3.5,0.001,Grid1DUnits::nm);
+        assert_ne!(grid1,grid2);
+
+        let grid2 = GRID1D::new(8,-1.2,3.9,0.001,Grid1DUnits::nm);
+        assert_ne!(grid1,grid2);
+
+        let grid2 = GRID1D::new(8,-1.2,3.5,0.0001,Grid1DUnits::nm);
+        assert_ne!(grid1,grid2);
+        let grid2 = GRID1D::new(8,-1.2,3.5,0.001,Grid1DUnits::mm);
+        assert_ne!(grid1,grid2);
+
+
+    }
+}
 
 
 

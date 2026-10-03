@@ -9,7 +9,7 @@ pub const kB_CGS:f64 = 1.380649 *10e-16; //erg K−1
 pub const h_CGS:f64 = 6.626069 *10e-27; //erg s
 pub const c_CGS:f64 = 2.997925 *10e10; // cm s−1
 
-
+#[derive(Clone)]
 pub struct Spectrum{
     data: Vec<f64>,
     grid: GRID1D,
@@ -115,8 +115,8 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
         println!("WARNING UNIMPLEMENTED");
         average*self.grid.step_size()
     }
-    pub fn to_band(self, band_pass: &mut SpectralResponse)->f64{
-        self.apply_spectral_response(band_pass).integrate()
+    pub fn to_band(&self, band_pass: &mut SpectralResponse)->f64{
+        self.clone().apply_spectral_response(band_pass).integrate()
     }
 
 }

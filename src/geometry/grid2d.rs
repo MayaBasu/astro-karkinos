@@ -3,15 +3,18 @@ use plotpy::{Curve, Plot, Text};
 use rand::RngExt;
 use std::fmt;
 use std::ops::Mul;
+//gridding
 
 #[derive(Debug, Clone)]
-pub struct GridingError;
-impl fmt::Display for GridingError {
+#[derive(PartialEq)]
+pub struct GriddingError;
+impl fmt::Display for GriddingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, " issue with griding point")
     }
 }
 
+#[derive(Debug)]
 pub enum Corners {
     Four(usize, usize, usize, usize),
     Two(usize, usize),
@@ -123,7 +126,7 @@ impl GRID2D {
     }
     pub fn locate(&self, grid_number: usize) -> Point {
         let [x_index, y_index] = self.xy_indices(grid_number);
-        println!("{:?}  {:?}",[x_index,y_index],self.xy_step_size);
+       // println!("{:?}  {:?}",[x_index,y_index],self.xy_step_size);
         let delta_x = x_index*self.xy_step_size[0];
         let delta_y = y_index*self.xy_step_size[1];
        // println!("{delta_x} {delta_y}");
@@ -190,15 +193,15 @@ impl GRID2D {
             new_y,
             self.coordinate_system())
     }
-    
+
     pub fn project_fit(&self, point:&Point,fractional_residual:bool)->(usize,usize,f64,f64){
         let point = self.project_inside(point);
         self.fit_grid(&point, fractional_residual).unwrap()
     }
-    pub fn fit_grid(&self, point:&Point, fractional_residual: bool) -> Result<(usize,usize,f64,f64), GridingError>{
+    pub fn fit_grid(&self, point:&Point, fractional_residual: bool) -> Result<(usize,usize,f64,f64), GriddingError>{
         if !self.is_point_inside(point){
             println!("Failed to grid point due to it being outside of the grid");
-            return Err(GridingError)
+            return Err(GriddingError)
         };
         let delta = point - &self.corner();
         let step = Point::new_from_regular(
@@ -223,18 +226,18 @@ impl GRID2D {
 
     }
 
-    pub fn snap(&self, point: &Point) -> Result<usize,GridingError> {
+    pub fn snap(&self, point: &Point) -> Result<usize, GriddingError> {
         match self.fit_grid(point,false){
             Ok((x_mod,y_mod,x_res,y_res)) => {
                 if (x_res.abs() > self.snap_precision()) | (y_res.abs() > self.snap_precision()){
                     println!("Failed to snap point due to it being further than the grid's snap_precision from any grid point");
-                    return Err(GridingError)
+                    return Err(GriddingError)
                 }
                 Ok(self.grid_number(x_mod,y_mod))
             }
             Err(_) => {
                 println!("Could not snap point to grid due to it being outside of the grid");
-                Err(GridingError) }
+                Err(GriddingError) }
         }
     }
 
@@ -295,13 +298,14 @@ impl GRID2D {
 
 
 
-    pub fn find_corners(&self, point: &Point) -> Result<Corners, GridingError> {
+    pub fn find_corners(&self, point: &Point) -> Result<Corners, GriddingError> {
         let (x_mod,y_mod,x_res,y_res) = match self.fit_grid(point,false){
             Ok((x_mod,y_mod,x_res,y_res)) => {(x_mod,y_mod,x_res,y_res)}
             Err(err) => {return Err(err)}
         };
+        println!("{:?}",(x_mod,y_mod,x_res,y_res));
 
-        if (x_res < self.snap_precision()) & (y_res < self.snap_precision()){
+        if (x_res.abs() < self.snap_precision()) & (y_res.abs() < self.snap_precision()){
             return Ok(Corners::One(self.grid_number(x_mod,y_mod)))
         }
 
@@ -315,13 +319,14 @@ impl GRID2D {
                 (delta/step).floor().y.value() as usize];
 
 
-        if (x_res < self.snap_precision()){
+
+        if (x_res.abs() < self.snap_precision()){
             return Ok(Corners::Two(
                 self.grid_number(x_mod, lower_left_corner[1]),
                 self.grid_number(x_mod, lower_left_corner[1]+1)
             ))
         }
-        if (y_res < self.snap_precision()) {
+        if (y_res.abs() < self.snap_precision()) {
             Ok(Corners::Two(
                 self.grid_number(lower_left_corner[0], y_mod),
                 self.grid_number(lower_left_corner[0] + 1, y_mod)
@@ -329,9 +334,9 @@ impl GRID2D {
         } else {
             Ok(Corners::Four(
                 self.grid_number(lower_left_corner[0], lower_left_corner[1]),
-                self.grid_number(lower_left_corner[0] + 1,lower_left_corner[1]),
-                self.grid_number(lower_left_corner[0] + 1, lower_left_corner[1]),
-                self.grid_number(lower_left_corner[0] + 1, lower_left_corner[1])
+                self.grid_number(lower_left_corner[0] ,lower_left_corner[1]+1),
+                self.grid_number(lower_left_corner[0] + 1, lower_left_corner[1]+1),
+                self.grid_number(lower_left_corner[0] +1, lower_left_corner[1])
 
             ))
         }
@@ -376,8 +381,8 @@ impl GRID2D {
 
         corner.points_begin();
         let corner_location = self.locate(0).to_absolute().values();
-        let corner_label = format!("Corner: ({:.3},{:.3})", corner_location.0, corner_location.1);
-        corner.points_add(corner_location.0, corner_location.1).set_label(corner_label.as_str());
+        let corner_label = format!("Corner: ({:.3},{:.3})", corner_location[0], corner_location[1]);
+        corner.points_add(corner_location[0], corner_location[1]).set_label(corner_label.as_str());
         corner.points_end();
 
 
@@ -487,17 +492,25 @@ impl GRID2D {
                 let Q11point = self.locate(Q11);
                 let Q22point = self.locate(Q22);
 
+
                 let (x1, y1) = (Q11point.x, Q11point.y);
                 let (x2, y2) = (Q22point.x, Q22point.y);
                 point.transform_to(&self.coordinate_system);
                 let x = point.x;
                 let y = point.y;
-                let c11 = (x2 - x) * (y2 - y);
-                let c12 = (x2 - x) * (y - y1);
-                let c21 = (x - x1) * (y2 - y);
-                let c22 = (x - x1) * (y - y1);
-                //  println!("The coefficients are {:?}",(c11,c12,c21,c22));
-                let normalization = (x2 - x1) * (y2 - y1);
+                let c11 = -(x2 - x) * (y2 - y);
+                let c12 = -(x2 - x) * (y - y1);
+                let c21 = -(x - x1) * (y2 - y);
+                let c22 = -(x - x1) * (y - y1);
+                println!("The coefficients are {:?}",(c11.value(),c12.value(),c21.value(),c22.value()));
+                //let normalization = (x2 - x1) * (y2 - y1);
+                let normalization = self.xy_step_size[0]*self.xy_step_size[1];
+                println!("CORNERS {:?} {:?} {:?} {:?}",Q12, Q22, Q21, Q11);
+                println!("norm {:?}",normalization.value());
+                if normalization.value() ==0.0{
+                    println!("NORM IS 0");
+
+                }
                 InterpolationData {
                     corners: Corners::Four(Q12, Q22, Q21, Q11),
                     coefficients: vec![c11, c12, c21, c22],
@@ -510,12 +523,15 @@ impl GRID2D {
 
                 let (x1, y1) = (Q1point.x, Q1point.y);
                 let (x2, y2) = (Q2point.x, Q2point.y);
+                println!("pos {:?} {:?} {:?} {:?}",x1.value(),y1.value(),x2.value(),y2.value());
+
                 point.transform_to(&self.coordinate_system);
                 let x = point.x;
                 let y = point.y;
 
-                if ((x1 - x2) < 2.0 * self.snap_precision) && ((y1 - y2) > 2.0 * self.snap_precision) {
+                if ((x1 - x2).abs() <  2.0*self.snap_precision) && ((y1 - y2).abs() > 2.0*self.snap_precision) {
                     //the corners are above and below the point
+                    println!("corners are above and below");
                     let c1 = (y1 - y).abs();
                     let c2 = (y2 - y).abs();
                     let normalization = self.xy_step_size[1];
@@ -524,7 +540,7 @@ impl GRID2D {
                         coefficients: vec![c1, c2],
                         normalization
                     }
-                } else if ((x1 - x2) > 2.0 * self.snap_precision) && ((y1 - y2) < 2.0 * self.snap_precision) {
+                } else if ((x1 - x2).abs() > 2.0*self.snap_precision) && ((y1 - y2).abs() < 2.0*self.snap_precision) {
                     //the corners are to the sides of the point
                     let c1 = (x1 - x).abs();
                     let c2 = (x2 - x).abs();
@@ -535,7 +551,9 @@ impl GRID2D {
                         normalization
                     }
                 } else {
-                    panic!("Unreachable")
+                    println!("point: {:?}",point);
+                    println!("point: {:?}",self.find_corners(&point));
+                    panic!("Unreachable ")
                 }
             }
             Ok(Corners::One(Q1)) => {
@@ -550,12 +568,95 @@ impl GRID2D {
     }
 }
 
+
+
 pub struct InterpolationData {
     pub corners: Corners,
     pub coefficients: Vec<Regular>,
     pub normalization: Regular,
 }
 
+
+
+#[cfg(test)]
+pub mod tests{
+    use crate::geometry::GRID1D;
+    use super::*;
+
+
+    #[test]
+    pub fn test_grid_2d(){
+        let coord = CoordinateSystem::new(
+            [0.2,0.0],
+            [0.0,0.5],
+            [1.0,0.5]
+        );
+        let grid = GRID2D::new([10,9],
+                               [1.,2.],
+                               Point::new(0.,0.,&coord),
+                               0.00001,
+                               coord);
+
+        assert_eq!(grid.xy_step_size(),Point::new(1.,2.,&coord));
+        assert_eq!(grid.y_num(),9);
+        assert_eq!(grid.x_num(),10);
+        assert_eq!(grid.xy_num(), [10,9]);
+        assert_eq!(grid.snap_precision(), 0.00001);
+        assert_eq!(grid.center(),Point::new(0.,0.,&coord));
+        assert_eq!(*grid.coordinate_system(),coord);
+        assert_eq!(grid.size(),Point::new(9.,16.,&coord));
+        assert_eq!(grid.y_size(), 16.);
+        assert_eq!(grid.x_size(), 9.);
+        assert_eq!(grid.num_points(), 90);
+        assert_eq!(grid.corner(), Point::new(-4.5,-8., &coord));
+        assert_eq!(grid.xy_indices(0), [0,0]);
+        assert_eq!(grid.xy_indices(1),[1,0]);
+        assert_eq!(grid.xy_indices(10),[0,1]);
+        assert_eq!(grid.xy_indices(89),[9,8]);
+        assert_eq!(grid.grid_number(4,3),3*10+4);
+        assert_eq!(grid.locate(0),Point::new(-4.5,-8., &coord));
+        assert_eq!(grid.locate(9),Point::new(4.5,-8., &coord));
+        assert_eq!(grid.locate(89),Point::new(4.5,8., &coord));
+        assert!(grid.random().x>grid.corner().x);
+        assert!(grid.random().y>grid.corner().y);
+
+        assert!(grid.random().x<grid.corner().x + Regular::try_from(grid.x_size()));
+        assert!(grid.random().y<grid.corner().y + Regular::try_from(grid.y_size()));
+        assert!(!grid.is_point_inside(&Point::new(-4.6,-8.,&coord)));
+        assert!(grid.is_point_inside(&Point::new(-4.5,-8.,&coord)));
+
+        assert!(!grid.is_point_inside(&Point::new(4.6,-8.,&coord)));
+        assert!(!grid.is_point_inside(&Point::new(-4.5,-8.2,&coord)));
+
+        assert!(grid.is_point_inside(&Point::new(-4.5,8.00001,&coord)));
+        assert!(grid.is_point_inside(&Point::new(-4.5,-4.,&coord)));
+
+        assert!(grid.is_point_inside(&Point::new(-4.3,-8.,&coord)));
+        assert!(grid.is_point_inside(&Point::new(4.5,8.,&coord)));
+
+        assert_eq!(grid.project_inside(&Point::new(-4.6,-8.,&coord)),Point::new(-4.5,-8.,&coord));
+        assert_eq!(grid.project_inside(&Point::new(4.6,-8.,&coord)),Point::new(4.5,-8.,&coord));
+        assert_eq!(grid.project_inside(&Point::new(4.6,-8.5,&coord)),Point::new(4.5,-8.,&coord));
+
+
+
+        let grid = GRID2D::new([2,2],
+                               [1.,2.],
+                               Point::new(0.,0.,&coord),
+                               0.00001,
+                               coord);
+        let points = vec![
+            vec![Point::new(-0.5,-1.,&coord),Point::new(0.5,-1.,&coord)],
+            vec![Point::new(-0.5,1.,&coord),Point::new(0.5,1.,&coord)]];
+        assert_eq!(grid.locate_grid_points(), points);
+
+
+
+
+
+    }
+
+}
 
 
 

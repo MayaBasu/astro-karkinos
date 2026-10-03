@@ -1,7 +1,7 @@
 
 use crate::geometry::*;
 use uvex_fitrs::{Fits, Hdu};
-
+use crate::telescope::SpatialEffect;
 
 pub enum EffectType{
     Multiplicative,
@@ -9,10 +9,8 @@ pub enum EffectType{
 }
 
 pub trait DATA2D<Unit:super::units::Unit>{
-
     fn grid(&self)-> &GRID2D;
     fn data(&self)-> &Vec<Vec<f64>>;
-
     fn mutable_data(&mut self)->&mut Vec<Vec<f64>>;
     fn unit(&self)-> &Unit;
     fn is_data_regular(data:&Vec<Vec<f64>>)->bool{
@@ -44,11 +42,11 @@ pub trait DATA2D<Unit:super::units::Unit>{
             .into_iter().
             zip(interpolation_data.coefficients)
             .map(|(point,coefficient)|{
+               // println!("{:?}",self.value_at_index(point));
                 (self.value_at_index(point)*coefficient).value()
             }).sum();
         (Regular::try_from(sum)/interpolation_data.normalization).value()
     }
-
     fn re_grid_values(&self, new_grid: GRID2D) -> Vec<Vec<f64>>{
         let points = new_grid.locate_grid_points()
             .iter()
@@ -60,8 +58,7 @@ pub trait DATA2D<Unit:super::units::Unit>{
             .collect()
 
     }
-
-    fn combine(&mut self, effect: &Self, effect_type: EffectType) {
+    fn combine(&mut self, effect: &SpatialEffect, effect_type: EffectType) {
 
 
 
@@ -75,32 +72,33 @@ pub trait DATA2D<Unit:super::units::Unit>{
         let (min_x,min_y,_,_) = self.grid().project_fit(&upper_left_corner,false);
         let (_,max_y,_,_) = self.grid().project_fit(&lower_left_corner,false);
         let (max_x,_,_,_) = self.grid().project_fit(&lower_right_corner,false);
+        //println!("lkjdf{:?} {:?} {:?} {:?}",min_x,min_y,max_x,max_y);
         //TODO:check bounds!
-        (min_y..max_y).zip((min_x..max_x)).for_each(|(i, j)| {
-            let pixel = self.grid().grid_number(i, j);
-            let detector_pixel_position = self.grid().locate(pixel);
-            let effect_value = effect.value(&detector_pixel_position);
-            match effect_type {
-                EffectType::Multiplicative => {
-                    self.mutable_data()[j][i] = self.mutable_data()[j][i] * effect_value;
+        (min_y..max_y).for_each(|i|{
+            (min_x..max_x).for_each(|j| {
+                let pixel = self.grid().grid_number(i, j);
+                let detector_pixel_position = self.grid().locate(pixel);
+               // println!("{:?}",detector_pixel_position);
+                let effect_value = effect.value(&detector_pixel_position);
+                match effect_type {
+                    EffectType::Multiplicative => {
+                        self.mutable_data()[j][i] = self.mutable_data()[j][i] * effect_value;
+                    }
+                    EffectType::Additive => {
+                        self.mutable_data()[j][i] =self.mutable_data()[j][i] + effect_value;
+                    }
                 }
-                EffectType::Additive => {
-                    self.mutable_data()[j][i] =self.mutable_data()[j][i] + effect_value;
-                }
-            }
-        });
-    }
+            })
 
-    fn add(&mut self, effect: &Self){
+        });
+
+    }
+    fn add(&mut self, effect: &SpatialEffect){
         self.combine(effect, EffectType::Additive)
     }
-
-
-    fn multiply(&mut self, effect: &Self){
+    fn multiply(&mut self, effect: &SpatialEffect){
         self.combine(effect, EffectType::Multiplicative)
     }
-
-
     fn write_to_fits(&self, path:&str){
         let shape = self.grid().xy_num();
         let primary_hdu = Hdu::new(&shape, self.data().into_iter().flatten().map(|x|*x).collect());

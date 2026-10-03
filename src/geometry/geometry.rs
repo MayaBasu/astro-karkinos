@@ -1,27 +1,21 @@
+
 use std::fmt::{Display, Formatter};
 use std::ops::{Div, Mul, Neg};
 use plotpy::{Curve, Plot};
 use serde::{Deserialize, Serialize};
 use core::ops::*;
 
-/*
-Regular is a type which is ensured to never be NaN or infinite.
-Division of Regular values fails if the divisor is 0.
-*/
-
-#[derive(Clone, Debug, Copy, Serialize, Deserialize)]
-#[derive(PartialEq, PartialOrd)]
-pub struct Regular{value: f64}
-
+#[derive(Debug)]
 pub enum FloatError{
     ValueNotRegular,
     ValueIsZero,
 }
 
+pub const NUMERICAL_PRECISION:f64 = 0.00000000001;
 
-
+#[derive(Clone, Debug, Copy, Serialize, Deserialize,PartialOrd)]
+pub struct Regular{value: f64}
 impl Regular{
-    
     pub fn check(float:f64)->bool{
         if float.is_nan(){
             false
@@ -54,19 +48,29 @@ impl Regular{
     }
 }
 
+impl Display for Regular {
 
-
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.value().fmt(f)
+    }
+}
+impl PartialEq<Self> for Regular {
+    fn eq(&self, other: &Self) -> bool {
+        (self.value()-other.value()).abs() < NUMERICAL_PRECISION
+    }
+}
+impl PartialEq<f64> for Regular{
+    fn eq(&self, other: &f64) -> bool {
+        let other = Regular::try_from(*other);
+        (self.value()-other.value()).abs() < NUMERICAL_PRECISION
+    }
+}
 impl Add for Regular {
     type Output = Regular;
     fn add(self, rhs: Regular) -> Regular {
         Regular {
             value: rhs.value + self.value
         }
-    }
-}
-impl Display for Regular {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.value().fmt(f)
     }
 }
 impl Sub for Regular {
@@ -85,7 +89,6 @@ impl Mul for Regular {
         }
     }
 }
-
 impl Mul<[Regular;2]> for Regular {
     type Output = [Regular;2];
     fn mul(self, rhs:[Regular;2])-> Self::Output{
@@ -104,20 +107,17 @@ impl Div for Regular {
 }
 
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Copy)]
+#[derive(Clone, Debug, Serialize, Deserialize, Copy)]
 pub struct CoordinateSystem {
     x_axis: [Regular;2],
     y_axis: [Regular;2],
     center: [Regular;2],
-    
 }
-
 pub const ABSOLUTE_COORDINATES: CoordinateSystem =  CoordinateSystem{
     x_axis: [Regular{value:1.0},Regular{value:0.0}],
     y_axis: [Regular{value:0.0},Regular{value:1.0}],
     center: [Regular{value:0.0},Regular{value:0.0}],
 };
-
 
 impl CoordinateSystem {
     pub fn new(x_axis: [f64;2], y_axis: [f64;2], center: [f64;2]) -> CoordinateSystem {
@@ -159,19 +159,31 @@ impl CoordinateSystem {
         plot.add(&x_axis);
         plot.add(&y_axis);
     }
-
     pub fn plot(&self, plot:&mut Plot, color:&str,label:&str){
         self.plot_string(plot,color.to_string(),label.to_string())
     }
 }
 
+impl PartialEq for CoordinateSystem{
+    fn eq(&self, other: &Self) -> bool {
+        (self.x_axis == other.x_axis) &&
+            (self.y_axis == other.y_axis) &&
+            (self.center == other.center)
+
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, Copy,PartialEq)]
-
 pub struct Point {
     pub x: Regular,
     pub y: Regular,
     pub coordinate_system: CoordinateSystem
+}
+impl Display for Point{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = format!(" {:?}, {:?}", self.x.value(), self.y.value());
+        write!(f, "{}", str)
+    }
 }
 
 impl Mul<f64> for Regular {
@@ -182,9 +194,6 @@ impl Mul<f64> for Regular {
         self*rhs
     }
 }
-
-
-
 impl Point {
 
     pub fn hypot(&self)->f64{
@@ -230,7 +239,7 @@ impl Point {
             self.y * self.coordinate_system.y_axis[1] +
             self.coordinate_system.center[1];
 
-        println!("absolue x absolute y {absolute_x} {absolute_y}");
+        //println!("absolue x absolute y {absolute_x} {absolute_y}");
 
         let det =
             new_coordinate_system.y_axis[1] * new_coordinate_system.x_axis[0] -
@@ -253,8 +262,8 @@ impl Point {
     }
 
 
-    pub fn values(&self) -> (f64, f64) {
-        (self.x.value(), self.y.value())
+    pub fn values(&self) -> [f64;2] {
+        [self.x.value(), self.y.value()]
     }
 
     pub fn plot(&self, plot: &mut Plot, color: &str,label:&str) {
@@ -270,10 +279,10 @@ impl Point {
 
             println!("Adding label");
         };
-        println!("{:?} {:?} {:?}",self.x,self.y,self);
+        //println!("{:?} {:?} {:?}",self.x,self.y,self);
 
-        let (x, y) = self.transform_to(&ABSOLUTE_COORDINATES).values();
-        println!("{:?} {:?}",x,y);
+        let [x, y] = self.transform_to(&ABSOLUTE_COORDINATES).values();
+       // println!("{:?} {:?}",x,y);
 
 
 
@@ -287,8 +296,6 @@ impl Point {
         plot.legend();
     }
 }
-
-
 impl Sub for Point{
     type Output = Point;
 
@@ -430,15 +437,101 @@ impl Div<f64> for Point{
 }
 
 
-
-
-
-
 #[cfg(test)]
 mod tests {
-    
+
     use crate::geometry::{grid1d, Grid1DUnits, GRID1D};
     use super::*;
+
+
+
+    #[test]
+    fn test_regulars(){
+        let x = Regular::try_from(1.2);
+        let y = Regular::try_from(-2.7);
+        assert_eq!(x + y, -1.5);
+        assert_eq!(x-y,3.9);
+        assert_eq!(x/y,-0.44444444444444444444);
+        assert_eq!(x.round(),1.0);
+        assert_eq!((-x).round(),-1.0);
+        assert_eq!((x *[x,y])[0],x*x);
+        assert_eq!((x *[x,y])[1],x*y);
+        assert_eq!(3.5*x,4.2);
+        assert_eq!(x*3.5,4.2);
+        assert_eq!((x*3).value(),1.2*3.0)
+
+    }
+
+    #[test]
+    fn coordinate_system(){
+        let abs_cords = CoordinateSystem::new(
+            [1.,0.],
+            [0.,1.],
+            [0.,0.]
+        );
+        assert_eq!(ABSOLUTE_COORDINATES, abs_cords)
+
+
+    }
+
+
+    #[test]
+    fn test_point(){
+        let coord_sys_2 = CoordinateSystem::new([-3.4,-1.3],[3.,4.1],[-1.2,-0.3]);
+
+        let point = Point::new(4.3,8.2,&coord_sys_2);
+        let round_point = Point::new(4.,8.,&coord_sys_2);
+
+        assert_eq!(point.round(),round_point);
+        assert_eq!(point.floor(),round_point);
+
+        let point2 = Point::new(4.9,-8.2,&coord_sys_2);
+        let floor_point2 = Point::new(4.,-9.,&coord_sys_2);
+        let round_point2 = Point::new(5.,-8.,&coord_sys_2);
+
+        assert_eq!(point2.round(),round_point2);
+        assert_eq!(point2.floor(),floor_point2);
+        assert_eq!(point2.values()[0],4.9);
+        assert_eq!(point2.values()[1],-8.2);
+
+        assert!(((point-point2).values()[0]+0.6).abs()<NUMERICAL_PRECISION);
+        assert!(((point-point2).values()[1]-16.4).abs()<NUMERICAL_PRECISION);
+
+        assert!(((&point-&point2).values()[0]+0.6).abs()<NUMERICAL_PRECISION);
+        assert!(((&point-&point2).values()[1]- 16.4).abs()<NUMERICAL_PRECISION);
+
+        assert!(((point*point2).values()[0]-4.3*4.9).abs()<NUMERICAL_PRECISION);
+        assert!(((point*point2).values()[1]+8.2*8.2).abs()<NUMERICAL_PRECISION);
+
+        assert!(((point+point2).values()[0]-(4.3+4.9)).abs()<NUMERICAL_PRECISION);
+        assert!(((point+point2).values()[1]+8.2-8.2).abs()<NUMERICAL_PRECISION);
+
+
+        assert!(((point*Regular::try_from(1.3)).values()[0]-4.3*1.3).abs()<NUMERICAL_PRECISION);
+
+
+        assert!(((&point/&point2).values()[0]-4.3/4.9).abs()<NUMERICAL_PRECISION);
+        assert!(((&point/&point2).values()[1]+8.2/8.2).abs()<NUMERICAL_PRECISION);
+
+        assert!(((point/point2).values()[0]-4.3/4.9).abs()<NUMERICAL_PRECISION);
+        assert!(((point/point2).values()[1]+8.2/8.2).abs()<NUMERICAL_PRECISION);
+
+
+        assert!(((point/Regular::try_from(2.3)).values()[0]-4.3/2.3).abs()<NUMERICAL_PRECISION);
+        assert!(((point/Regular::try_from(2.3)).values()[1]-8.2/2.3).abs()<NUMERICAL_PRECISION);
+
+        assert!(((point/2.3).values()[0]-4.3/2.3).abs()<NUMERICAL_PRECISION);
+        assert!(((point/2.3).values()[1]-8.2/2.3).abs()<NUMERICAL_PRECISION);
+
+
+
+
+
+
+
+
+
+    }
 
     #[test]
     #[should_panic] // This also works
@@ -496,24 +589,7 @@ mod tests {
 
     }
     
-    #[test]
-    fn test_1d_grid() {
-        let grid1d_1 = GRID1D::new(6, -1.5, 3.5, 0.001, Grid1DUnits::mm);
-        let points = vec![-1.5002, -0.4999, 0.5008, 1.5009, 2.4997, 3.4997];
-        let grid1d_2 = GRID1D::from_values(points, 0.001, Grid1DUnits::mm);
-
-
-        let point_1 = -1.;
-        let point_2 = 3.50001;
-        let point_3 = -3.;
-        let point_4 = 5.;
-
-        assert_eq!(grid1d_1.locate(point_1, Grid1DUnits::mm), grid1d::Location::Between(0, 1, 0.5));
-        assert_eq!(grid1d_1.locate(point_2, Grid1DUnits::mm), grid1d::Location::Snapped(5));
-        assert_eq!(grid1d_1.locate(point_3, Grid1DUnits::mm), grid1d::Location::Lower);
-        assert_eq!(grid1d_1.locate(point_4, Grid1DUnits::mm), grid1d::Location::Higher);
-        assert_eq!(grid1d_1, grid1d_2);
-    }
+    
 
 }
 

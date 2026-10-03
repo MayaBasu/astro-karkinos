@@ -3,6 +3,8 @@ pub mod grid1d;
 pub mod grid2d;
 mod geometry_documentation;
 
+
+
 pub use self::grid1d::*;
 pub use self::grid2d::*;
 pub use self::geometry::*;
@@ -25,7 +27,7 @@ mod tests {
                                4.0,
                                &relative_coordinates);
         point.to_absolute();
-        println!("{:?}", point);
+       // println!("{:?}", point);
         //assert!(6.08-point.as_absolute().x < 0.0001);
         //assert!(8.02-point.as_absolute().y < 0.0001);
         println!("Test of as_absolute() passed");
