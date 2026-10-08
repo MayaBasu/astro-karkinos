@@ -1,11 +1,17 @@
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use uvex_fitrs::{Fits, FitsData, FitsDataArray};
+use crate::gridded_data::{units, UnitError};
 use crate::geometry::*;
-use crate::gridded_data::{DATA1D, UnitlessUnit, DATA2D};
+use crate::geometry::Grid1DUnits::{angstroms, nm};
+use crate::gridded_data::{DATA1D, UnitlessUnit, DATA2D, SpectralUnits};
+use crate::gridded_data::SpectralUnits::f_lambda;
 
-
+#[derive(Debug,Clone)]
 pub struct SpectralResponse{
     data: Vec<f64>,
     grid1d: GRID1D,
+    unit: UnitlessUnit,
 }
 
 /*
@@ -15,44 +21,24 @@ Spectral Response assumptions:
 3. Data values are Regular
  */
 
-impl SpectralResponse{
-    pub fn normalize(data:Vec<f64>) -> Result<Vec<f64>,FloatError>{
+
+
+impl DATA1D<UnitlessUnit> for SpectralResponse{
+    fn new(grid1d: GRID1D, data: Vec<f64>,unit:UnitlessUnit) -> Self {
+
         if !Self::is_data_regular(&data){
-            return Err(FloatError::ValueNotRegular)
+            panic!("Can not initialize spectral response with non-regular values: +/- inf or NaN")
         }
-        let sum:f64 = data.iter().sum();
-        if sum == 0.0{
-            return Err(FloatError::ValueIsZero)
-        }
-        Ok(data.iter().map(|v|*v/sum).collect())
-    }
-    pub fn new(grid1d: GRID1D, data: Vec<f64>) -> Self {
         assert_eq!(grid1d.num_points(), data.len(),
                    "Failed to initialize new SpectralResponse struct:\
                    Must have exactly one data point per grid point");
-        let data = match SpectralResponse::normalize(data){
-            Ok(data) => {data}
-            Err(float_error) => {
-                match float_error{
-                    FloatError::ValueNotRegular => {panic!("Failed to initialize new SpectralResponse struct:\
-                    Data must not contain inf or Nan values")}
-                    FloatError::ValueIsZero => {panic!("Failed to initialize new SpectralResponse struct:\
-                    Data must not sum to 0")}
-                }
-            }
-        };
 
         SpectralResponse{
             data,
             grid1d,
+            unit
         }
     }
-    pub fn regrid(&mut self, grid1d:GRID1D)->Self{
-        let new_data = self.values(&grid1d);
-        SpectralResponse::new(grid1d,new_data)
-    }
-}
-impl DATA1D<UnitlessUnit> for SpectralResponse{
     fn grid(&self) -> &GRID1D {
         &self.grid1d
     }
@@ -60,7 +46,39 @@ impl DATA1D<UnitlessUnit> for SpectralResponse{
         &self.data
     }
     fn unit(&self) -> &UnitlessUnit {
-        &UnitlessUnit::NormalizedFraction
+        &self.unit
+    }
+
+    fn multiply(&self, other: &Self) -> Self {
+        let data = self.multiply_data(other);
+        Self::new(other.grid1d, data, self.unit)
+    }
+
+
+}
+
+impl SpectralResponse{
+
+    pub fn multiply_responses(responses: Vec<SpectralResponse>)->SpectralResponse{
+        assert!(responses.len() > 0, "can not multiply 0 responses");
+        let mut base:SpectralResponse = responses[0].clone();
+        responses.into_iter().for_each(|response|{
+            base.multiply(&response);
+        });
+        base
+
+    }
+    pub fn square_wave(grid: GRID1D, lower: f64, upper:f64)->Self{
+        let data = grid.locate_grid_points().iter().map(|&p|{
+            if p < lower{
+                0.
+            } else if p > upper{
+                0.
+            }else{
+                1.
+            }
+        }).collect::<Vec<f64>>();
+        Self::new(grid, data, UnitlessUnit::NormalizedFraction)
     }
 }
 

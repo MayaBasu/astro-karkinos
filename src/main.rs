@@ -3,11 +3,13 @@ use clap::Parser;
 use crate::geometry::{Grid1DUnits, Regular};
 use crate::telescope::{Detector, PsfGrid, SpatialEffect, SpectralResponse, Spectrum};
 use crate::geometry::{generate_notebook, CoordinateSystem, Point, ABSOLUTE_COORDINATES, GRID1D, GRID2D};
-use crate::gridded_data::DATA2D;
+use crate::geometry::Grid1DUnits::nm;
+use crate::gridded_data::{DATA1D, DATA2D};
 use crate::gridded_data::DetectorUnits::{AverageElectrons, Electrons};
+use crate::uvex::uvex::{demo, test};
 
 pub mod geometry;
-
+pub mod uvex;
 pub mod telescope;
 pub mod gridded_data;
 
@@ -15,6 +17,33 @@ pub mod gridded_data;
 
 
 pub fn main() {
+
+  //  let grid = GRID1D::new(1000,100.,1000.,0.0001,nm);
+
+
+   // let mut dichroic_reflection = SpectralResponse::load(
+   //     "/Users/mayabasu/PycharmProjects/make_inputs/inputs/reflection_UVIM_dichroic_response.dat",
+   //     0.001).unwrap();
+
+   // dichroic_reflection.write_to_dat("#dichroic reflection","src/test_outputs/reflection");
+
+  //  dichroic_reflection.regrid(&grid).write_to_dat("#dichroic reflection","src/test_outputs/reflection2");
+
+
+
+
+    demo("/Users/mayabasu/PycharmProjects/make_inputs/inputs/input_spectra_1", "2000");
+    /*
+
+    let grid = GRID1D::new(1000,100.,1000.,0.0001,nm);
+
+    let response = Spectrum::load("/Users/mayabasu/PycharmProjects/JupyterProject/tablejhghj.dat",0.001).unwrap();
+    let mut response = SpectralResponse::load("/Users/mayabasu/PycharmProjects/make_inputs/inputs/mirror_reflectivity.dat", 0.001).unwrap();
+    demo("/Users/mayabasu/PycharmProjects/make_inputs/inputs/input_spectra_1", "2000");
+    demo("/Users/mayabasu/PycharmProjects/make_inputs/inputs/input_spectra_2","6000")
+
+     */
+    /*
    // test_coordinate_system();
     let mut grid = GRID2D::new(
         [18,18],
@@ -138,6 +167,8 @@ pub fn main() {
 
     let background = SpatialEffect::new(grid, background.re_grid_values(grid));
     background.unwrap().write_to_fits("backgroundteste.fits")
+
+     */
 
 
 

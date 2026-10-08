@@ -491,8 +491,8 @@ impl GRID2D {
                 let Q21point = self.locate(Q21);
 
 
-                let (x1, y1) = (Q12point.x, Q12point.y);
-                let (x2, y2) = (Q21point.x, Q21point.y);
+                let (x1, y2) = (Q12point.x, Q12point.y);
+                let (x2, y1) = (Q21point.x, Q21point.y); //y axis is flipped w.r.t wikipedia
                 point.transform_to(&self.coordinate_system);
                 let x = point.x;
                 let y = point.y;
@@ -500,18 +500,18 @@ impl GRID2D {
                 let c12 = -(x2 - x) * (y - y1);
                 let c21 = -(x - x1) * (y2 - y);
                 let c22 = -(x - x1) * (y - y1);
-                println!("The coefficients are {:?}",(c11.value(),c12.value(),c21.value(),c22.value()));
+                println!("The coefficients are {:?}",(c12.value(),c11.value(),c21.value(),c22.value()));
                 //let normalization = (x2 - x1) * (y2 - y1);
                 let normalization = self.xy_step_size[0]*self.xy_step_size[1];
-                println!("CORNERS {:?} {:?} {:?} {:?}",Q12, Q22, Q21, Q11);
+                println!("CORNERS {:?} {:?} {:?} {:?}",Q12, Q11, Q21, Q22);
                 println!("norm {:?}",normalization.value());
                 if normalization.value() ==0.0{
                     println!("NORM IS 0");
 
                 }
                 InterpolationData {
-                    corners: Corners::Four(Q12, Q22, Q21, Q11),
-                    coefficients: vec![c11, c12, c21, c22],
+                    corners: Corners::Four(Q12, Q11, Q21, Q22),
+                    coefficients: vec![c12, c11, c21, c22],
                     normalization
                 }
             }
@@ -530,8 +530,8 @@ impl GRID2D {
                 if ((x1 - x2).abs() <  2.0*self.snap_precision) && ((y1 - y2).abs() > 2.0*self.snap_precision) {
                     //the corners are above and below the point
                     println!("corners are above and below");
-                    let c1 = (y1 - y).abs();
-                    let c2 = (y2 - y).abs();
+                    let c1 = (y2 - y).abs();
+                    let c2 = (y1 - y).abs();
                     let normalization = self.xy_step_size[1];
                     return InterpolationData {
                         corners: Corners::Two(Q1, Q2),
@@ -540,9 +540,10 @@ impl GRID2D {
                     }
                 } else if ((x1 - x2).abs() > 2.0*self.snap_precision) && ((y1 - y2).abs() < 2.0*self.snap_precision) {
                     //the corners are to the sides of the point
-                    let c1 = (x1 - x).abs();
-                    let c2 = (x2 - x).abs();
+                    let c1 = (x2 - x).abs();
+                    let c2 = (x1 - x).abs();
                     let normalization = self.xy_step_size[0];
+                    println!("Corners:{:?}  {:?}", Q1,Q2);
                     return InterpolationData {
                         corners: Corners::Two(Q1, Q2),
                         coefficients: vec![c1, c2],
@@ -551,7 +552,7 @@ impl GRID2D {
                 } else {
                     println!("point: {:?}",point);
                     println!("point: {:?}",self.find_corners(&point));
-                    panic!("Unreachable ")
+                    unreachable!("Unreachable!")
                 }
             }
             Ok(Corners::One(Q1)) => {
@@ -700,6 +701,95 @@ pub mod tests{
         assert_eq!(grid.find_corners(&Point::new(0.7,-1.5,&coord)),Ok(Corners::Four(1,4,5,2)));
         assert_eq!(grid.find_corners(&Point::new(-0.7,1.5,&coord)),Ok(Corners::Four(3,6,7,4)));
         assert_eq!(grid.find_corners(&Point::new(0.007,1.5,&coord)),Ok(Corners::Four(4,7,8,5)));
+
+
+        pub fn check_interpolation(interp_data_1:InterpolationData, interp_data_2:InterpolationData){
+            assert_eq!(interp_data_1.corners, interp_data_2.corners, "{:?} v.s {:?}",interp_data_1.corners, interp_data_2.corners);
+            assert_eq!(interp_data_2.coefficients.len(),interp_data_1.coefficients.len());
+            assert!((interp_data_2.normalization-interp_data_1.normalization).abs().value() < NUMERICAL_PRECISION);
+
+            interp_data_1.coefficients.iter().zip(interp_data_2.coefficients).for_each(|(i,j)|{
+                assert!((*i-j).abs().value() < NUMERICAL_PRECISION);
+            })
+        }
+
+        let interp = grid.interpolation_coefficients(&Point::new(0.000000016,-0.000000005,&coord));
+        let expected_interp = InterpolationData{
+            corners: Corners::One(4),
+            coefficients: vec![Regular::try_from(1.0)],
+            normalization: Regular::try_from(1.0),
+        };
+
+
+
+
+
+        let interp = grid.interpolation_coefficients(&Point::new(-0.5,-0.5,&coord));
+        let expected_interp = InterpolationData{
+            corners: Corners::Four(0,3,4,1),
+            coefficients: vec![Regular::try_from(0.25),
+                               Regular::try_from(0.75),
+                               Regular::try_from(0.75),
+                               Regular::try_from(0.25)],
+            normalization: Regular::try_from(2.0),
+        };
+
+        check_interpolation(interp, expected_interp);
+
+
+        let interp = grid.interpolation_coefficients(&Point::new(-0.75,-0.5,&coord));
+        let expected_interp = InterpolationData{
+            corners: Corners::Four(0,3,4,1),
+            coefficients: vec![Regular::try_from(0.5*0.75),
+                               Regular::try_from(1.5*0.75),
+                               Regular::try_from(1.5*0.25),
+                               Regular::try_from(0.5*0.25)],
+            normalization: Regular::try_from(2.0),
+        };
+
+        check_interpolation(interp, expected_interp);
+
+        let interp = grid.interpolation_coefficients(&Point::new(0.25,1.5,&coord));
+        let expected_interp = InterpolationData{
+            corners: Corners::Four(4,7,8,5),
+            coefficients: vec![Regular::try_from(0.5*0.75),
+                               Regular::try_from(1.5*0.75),
+                               Regular::try_from(1.5*0.25),
+                               Regular::try_from(0.5*0.25)],
+            normalization: Regular::try_from(2.0),
+        };
+
+        check_interpolation(interp, expected_interp);
+
+
+        let interp = grid.interpolation_coefficients(&Point::new(0.,-1.5,&coord));
+        let expected_interp = InterpolationData{
+            corners: Corners::Two(1,4),
+            coefficients: vec![Regular::try_from(1.5),
+                               Regular::try_from(0.5)],
+            normalization: Regular::try_from(2.0),
+        };
+
+        check_interpolation(interp, expected_interp);
+
+
+        let interp = grid.interpolation_coefficients(&Point::new(0.75,-2.0,&coord));
+        let expected_interp = InterpolationData{
+            corners: Corners::Two(1,2),
+            coefficients: vec![Regular::try_from(0.25),
+                               Regular::try_from(0.75)],
+            normalization: Regular::try_from(1.0),
+        };
+
+        check_interpolation(interp, expected_interp);
+
+
+
+
+
+
+
+
 
 
 

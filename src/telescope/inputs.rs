@@ -9,11 +9,11 @@ pub const kB_CGS:f64 = 1.380649 *10e-16; //erg K−1
 pub const h_CGS:f64 = 6.626069 *10e-27; //erg s
 pub const c_CGS:f64 = 2.997925 *10e10; // cm s−1
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Spectrum{
     data: Vec<f64>,
     grid: GRID1D,
-    units: SpectralUnits
+    units: crate::gridded_data::units::SpectralUnits
 }
 /*
 Spectrum assumptions:
@@ -22,18 +22,7 @@ Spectrum assumptions:
 3. Data values are Regular
  */
 impl DATA1D<SpectralUnits> for Spectrum{
-    fn grid(&self) -> &GRID1D {
-        &self.grid
-    }
-    fn data(&self) -> &Vec<f64> {
-        &self.data
-    }
-    fn unit(&self) -> &SpectralUnits {
-        &self.units
-    }
-}
-impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
-    pub fn new(grid:GRID1D,data:Vec<f64>,units:SpectralUnits)->Spectrum{
+    fn new(grid:GRID1D,data:Vec<f64>,units:SpectralUnits)->Spectrum{
         assert_eq!(grid.num_points(),data.len());
         if !Self::is_data_regular(&data){
             panic!("Failed to initialize new SpectralResponse struct:\
@@ -46,6 +35,23 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
             units
         }
     }
+    fn grid(&self) -> &GRID1D {
+        &self.grid
+    }
+    fn data(&self) -> &Vec<f64> {
+        &self.data
+    }
+    fn unit(&self) -> &SpectralUnits {
+        &self.units
+    }
+
+    fn multiply(&self, other: &Self) -> Self {
+        let data = self.multiply_data(other);
+        Self::new(self.grid, data, *self.unit())
+    }
+}
+impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
+
     pub fn new_flat(grid:GRID1D,value:f64,units:SpectralUnits)-> Spectrum{
         let data = (0..grid.num_points()).map(|_|value).collect();
         Spectrum::new(grid,data,units)
@@ -102,7 +108,7 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
 
     }
     pub fn apply_spectral_response(self, spectral_response:&mut SpectralResponse)->Self {
-        spectral_response.regrid(self.grid);
+        let spectral_response = spectral_response.regrid(&self.grid);
         assert_eq!(*spectral_response.grid(),self.grid,"Unreachable: Re-grid attempt failed");
         let new_data = self.data.into_iter().enumerate().map(|(i,x)|{
             x*spectral_response.data()[i]

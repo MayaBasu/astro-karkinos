@@ -4,7 +4,10 @@ use std::fmt::{Display, Formatter};
 use crate::geometry::geometry::*;
 use plotpy::{Curve, Plot, Text};
 use rand::RngExt;
+use crate::gridded_data::UnitError;
 use crate::geometry::GriddingError;
+use crate::gridded_data::Unit;
+
 #[derive(PartialEq,Debug)]
 pub enum Location{
     Higher,
@@ -79,16 +82,49 @@ pub struct GRID1D {
 #[allow(non_camel_case_types)]
 pub enum Grid1DUnits {
     nm,
-    mm,
     angstroms,
+    um,
+}
+impl Grid1DUnits{
+    pub fn to_nm(&self)->f64{
+        // "one 'self' is how many nm?"
+        match self{
+            Grid1DUnits::nm => {1.0}
+            Grid1DUnits::angstroms => {0.1}
+            Grid1DUnits::um => {1000.}
+        }
+
+    }
+    pub fn conversion_factor(&self, other:Self) -> f64{
+        let other_in_nm = other.to_nm();
+        //One nm is how many other
+        let factor = match self{
+            Grid1DUnits::nm => {1.0}
+            Grid1DUnits::angstroms => {10.}
+            Grid1DUnits::um => {0.001}
+        };
+        other_in_nm*factor
+    }
+}
+impl Unit for Grid1DUnits{
+    fn from_str(str: &str) -> Result<Self, UnitError> {
+        match str {
+            "nm" => Ok(Self::nm),
+            "angstroms" => Ok(Self::angstroms),
+            "angstrom" => Ok(Self::angstroms),
+            "um" => Ok(Self::um),
+            s => Err(UnitError::ParsingError(format!("Could not parse {:?} as a Grid1D Unit, options are \
+             'nm', 'mm', 'angstroms'",s)))
+        }
+    }
 }
 
 impl Display for Grid1DUnits {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self{
             Grid1DUnits::nm => {write!(f, "nm")}
-            Grid1DUnits::mm => {write!(f, "mm")}
             Grid1DUnits::angstroms => {write!(f,"angstroms")}
+            Grid1DUnits::um =>write!(f,"um")
         }
 
     }
@@ -212,9 +248,11 @@ impl GRID1D {
     }
 
     pub fn locate_regular(&self, value:Regular, unit: Grid1DUnits) -> Location{
-        //TODO: Add in automatic unit conversion
-        assert_eq!(self.units, unit, "Convert value to same unit as 1D grid before attempting to locate");
-
+        let conversion_factor = self.units.conversion_factor(unit);
+        //println!("CONVERSION FACTOR IS {:?} {:?}., {:?}", self.minimum_value,conversion_factor, value);
+        //conversion factor from other to self
+        let value = value*conversion_factor;
+        //println!("{:?}",value);
         if value > (self.maximum_value + self.snap_precision) {
             return Location::Higher};
         if value < (self.minimum_value - self.snap_precision) {
@@ -331,8 +369,9 @@ impl GRID1D {
 
 #[cfg(test)]
 pub mod tests{
-    use crate::geometry::Grid1DUnits::mm;
+
     use crate::geometry::{GriddingError, Regular};
+    use crate::geometry::Grid1DUnits::nm;
     use super::GRID1D;
     use super::Grid1DUnits;
     use super::Location;
@@ -340,9 +379,9 @@ pub mod tests{
 
     #[test]
     fn test_1d_grid() {
-        let grid1d_1 = GRID1D::new(6, -1.5, 3.5, 0.001, Grid1DUnits::mm);
+        let grid1d_1 = GRID1D::new(6, -1.5, 3.5, 0.001, Grid1DUnits::nm);
         let points = vec![-1.5002, -0.4999, 0.5008, 1.5009, 2.4997, 3.4997];
-        let grid1d_2 = GRID1D::from_values(points, 0.001, Grid1DUnits::mm);
+        let grid1d_2 = GRID1D::from_values(points, 0.001, Grid1DUnits::nm);
 
 
         let point_1 = -1.;
@@ -350,25 +389,25 @@ pub mod tests{
         let point_3 = -3.;
         let point_4 = 5.;
 
-        assert_eq!(grid1d_1.locate(point_1, Grid1DUnits::mm), Location::Between(0, 1, 0.5));
-        assert_eq!(grid1d_1.locate(point_2, Grid1DUnits::mm), Location::Snapped(5));
-        assert_eq!(grid1d_1.locate(point_3, Grid1DUnits::mm), Location::Lower);
-        assert_eq!(grid1d_1.locate(point_4, Grid1DUnits::mm), Location::Higher);
+        assert_eq!(grid1d_1.locate(point_1, Grid1DUnits::nm), Location::Between(0, 1, 0.5));
+        assert_eq!(grid1d_1.locate(point_2, Grid1DUnits::nm), Location::Snapped(5));
+        assert_eq!(grid1d_1.locate(point_3, Grid1DUnits::nm), Location::Lower);
+        assert_eq!(grid1d_1.locate(point_4, Grid1DUnits::nm), Location::Higher);
         assert_eq!(grid1d_1, grid1d_2);
         assert_eq!(grid1d_1.num_steps, 5);
         assert_eq!(grid1d_1.num_points(), 6);
-        assert_eq!(grid1d_1.unit(),Grid1DUnits::mm);
+        assert_eq!(grid1d_1.unit(),Grid1DUnits::nm);
         assert_eq!(grid1d_1.locate_grid_point(2),0.5);
         assert_eq!(grid1d_1.locate_grid_points(),[-1.5, -0.5, 0.5, 1.5, 2.5, 3.5]);
         assert_eq!(grid1d_1.grid_width().value(), 5.0);
         assert!(grid1d_1.random_point().value()>=grid1d_1.minimum_value());
         assert!(grid1d_1.random_point().value()<=grid1d_1.maximum_value());
         //-1.5002, -0.4999, 0.5008, 1.5009, 2.4997, 3.4997
-        assert_eq!(grid1d_1.snap(Regular::try_from(0.5),mm),Ok(2));
-        assert_eq!(grid1d_1.snap(Regular::try_from(-1.5002),mm),Ok(0));
-        assert_eq!(grid1d_1.snap(Regular::try_from(-1.51),mm),Err(GriddingError));
-        assert_eq!(grid1d_1.snap(Regular::try_from(3.51),mm),Err(GriddingError));
-        assert_eq!(grid1d_1.snap(Regular::try_from(1.6),mm),Err(GriddingError));
+        assert_eq!(grid1d_1.snap(Regular::try_from(0.5),nm),Ok(2));
+        assert_eq!(grid1d_1.snap(Regular::try_from(-1.5002),nm),Ok(0));
+        assert_eq!(grid1d_1.snap(Regular::try_from(-1.51),nm),Err(GriddingError));
+        assert_eq!(grid1d_1.snap(Regular::try_from(3.51),nm),Err(GriddingError));
+        assert_eq!(grid1d_1.snap(Regular::try_from(1.6),nm),Err(GriddingError));
 
 
 
@@ -388,7 +427,7 @@ pub mod tests{
 
         let grid2 = GRID1D::new(8,-1.2,3.5,0.0001,Grid1DUnits::nm);
         assert_ne!(grid1,grid2);
-        let grid2 = GRID1D::new(8,-1.2,3.5,0.001,Grid1DUnits::mm);
+        let grid2 = GRID1D::new(8,-1.2,3.5,0.001,Grid1DUnits::nm);
         assert_ne!(grid1,grid2);
 
 
