@@ -65,10 +65,10 @@ impl PSF {
 
         let center_x:f64 = PSF::load(center.0, &primary_hdu);
         let center_y:f64 = PSF::load(center.1, &primary_hdu);
-        println!("loaded center");
+      //  println!("loaded center");
         let size_x:f64 = PSF::load(size.0, &primary_hdu);
         let size_y:f64 = PSF::load(size.1, &primary_hdu);
-        println!("loaded size");
+       // println!("loaded size");
         let data = data.chunks(x_num).map(|i| i.to_vec()).collect();
       //  println!("{:?}",data);
         PSF {
@@ -111,8 +111,8 @@ impl PSF {
     }
 
 
-    pub fn repack_data(flat_data: Vec<f64>) -> Vec<Vec<f64>>{
-        flat_data.chunks(64).map(|i| i.to_vec()).collect()
+    pub fn repack_data(flat_data: Vec<f64>,row_size:usize) -> Vec<Vec<f64>>{
+        flat_data.chunks(row_size).map(|i| i.to_vec()).collect()
     }
 
     fn load(thingy:Load, header:&Hdu)-> f64{
@@ -152,7 +152,7 @@ impl PSF {
 #[derive(Debug,Clone)]
 pub struct PsfGrid {
     label:String,
-    grid: crate::geometry::grid2d::GRID2D,
+    pub grid: crate::geometry::grid2d::GRID2D,
     data:Vec<(usize,PSF)>,
     valid: bool,
     directory_path:String,
@@ -180,12 +180,12 @@ impl PsfGrid{
         let paths = fs::read_dir(self.directory_path.clone()).unwrap();
         let mut counter = 0;
         for path in paths {
-            println!("loading {:?}",path);
+           // println!("loading {:?}",path);
 
 
             let path = path.unwrap().path();
             if !path.clone().into_os_string().into_string().unwrap().contains("fits"){
-                println!("SKIPPING {:?}",path);
+               // println!("SKIPPING {:?}",path);
                 continue
             }
             counter += 1;
@@ -205,7 +205,7 @@ impl PsfGrid{
         }
         data.sort_by_key(|x|x.0);
         self.data = data;
-        println!("Loaded {counter} files into a Grid Struct from {:?}",self.directory_path);
+        println!(" lsk Loaded {counter} files into a Grid Struct from {:?}",self.directory_path);
         assert_eq!(counter,self.grid.num_points(),"Loaded the wrong number of PSF files");
 
 
@@ -245,13 +245,16 @@ impl PsfGrid{
 
         //  println!("To {:?}",(x,y));
         let interpolation_data = self.grid.projected_interpolation_coefficients(&point.clone());
-
+       // println!("INTERPOLATION DATA{:?}",interpolation_data);
+       // println!("{:?}",self.data);
         match interpolation_data.corners{
             Corners::Four(Q12, Q22, Q21, Q11) => {
                 let q11 = self.data[Q11].clone();
                 let q12 = self.data[Q12].clone();
                 let q21 = self.data[Q21].clone();
                 let q22 = self.data[Q22].clone();
+
+                let x_size = q11.1.x_pixels;
 
                 let c11 = interpolation_data.coefficients[0];
                 let c12 = interpolation_data.coefficients[1];
@@ -263,6 +266,7 @@ impl PsfGrid{
                 assert_eq!(q21.0,Q21);
                 assert_eq!(q22.0,Q22);
 
+
                 let interpolated_data:Vec<f64> =
                     q11.1.data.into_iter().flatten().zip(
                         q12.1.data.into_iter().flatten().zip(
@@ -271,12 +275,13 @@ impl PsfGrid{
                         |(q11,(q12,(q21,q22)))| {
                             ((q11*c11  + q12*c12  + q21*c21  + q22*c22 )/interpolation_data.normalization).value()
                         }).collect();
-                PSF::repack_data(interpolated_data)
+                PSF::repack_data(interpolated_data,x_size)
 
             }
             Corners::Two(Q1, Q2) => {
                 let q1 = self.data[Q1].clone();
                 let q2 = self.data[Q2].clone();
+                let x_size = q1.1.x_pixels;
 
                 let c1 = interpolation_data.coefficients[0];
                 let c2 = interpolation_data.coefficients[1];
@@ -292,7 +297,7 @@ impl PsfGrid{
                         |(q1,q2)| {
                             ((q1*c1 + q2*c2 )/interpolation_data.normalization).value()
                         }).collect();
-                PSF::repack_data(interpolated_data)
+                PSF::repack_data(interpolated_data,x_size)
 
             }
             Corners::One(Q) => {

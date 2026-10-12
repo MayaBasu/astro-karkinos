@@ -82,11 +82,12 @@ impl SpectralResponse{
     }
 }
 
-
+#[derive(Clone, Debug)]
 pub struct SpatialEffect{
-    grid: GRID2D,
+    pub(crate) grid: GRID2D,
     data:Vec<Vec<f64>>,
 }
+
 
 impl DATA2D<UnitlessUnit> for SpatialEffect{
     fn grid(&self) -> &GRID2D {
@@ -107,6 +108,16 @@ impl DATA2D<UnitlessUnit> for SpatialEffect{
 
 impl SpatialEffect{
 
+    pub fn scale(&mut self, scalar:f64){
+        let new_data = self.data.iter().map(|row|{
+            row.iter().map(|element|{
+                element*scalar
+            }).collect()
+        }).collect();
+        self.data = new_data;
+        //TODO should reinitialize but dont want to normalize
+    }
+
     pub fn normalize(data:Vec<Vec<f64>>) -> Result<Vec<Vec<f64>>,FloatError>{
         if !Self::is_data_regular(&data){
             return Err(FloatError::ValueNotRegular)
@@ -120,10 +131,34 @@ impl SpatialEffect{
 
     pub fn new(grid:GRID2D, data: Vec<Vec<f64>>) -> Result<SpatialEffect,FloatError>{
         let data = Self::normalize(data)?;
+       // println!("{:?}",grid);
+        assert_eq!(data.len(), grid.y_num());
+        data.iter().for_each(|row|
+            {assert_eq!(row.len(), grid.x_num())});
         Ok(SpatialEffect{
             grid,
             data,
         })
+    }
+
+    fn combine_2_add(&self, effect:&SpatialEffect) ->SpatialEffect {
+        let mut data = self.data().clone();
+        for y in 0..self.grid().y_num(){
+            for x in 0..self.grid().x_num(){
+                let grid_number = self.grid().grid_number(x,y);
+                let point = self.grid().locate(grid_number);
+                let value = if effect.grid().is_point_inside(&point){
+                    effect.value(&point)
+                }else{
+                    0.0
+                };
+                data[y][x] += value
+            }
+        }
+        SpatialEffect{
+            grid:self.grid.clone(),
+            data
+        }
     }
 
     pub fn from_fits(grid:GRID2D,path:&str)-> Result<SpatialEffect,FloatError>{

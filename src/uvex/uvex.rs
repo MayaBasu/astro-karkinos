@@ -1,226 +1,221 @@
-use crate::geometry::GRID1D;
-use crate::geometry::Grid1DUnits::nm;
-use crate::gridded_data::{SpectralUnits, DATA1D};
-use crate::gridded_data::SpectralUnits::{f_lambda, AbMagnitude};
-use crate::telescope::{SpectralResponse, Spectrum};
-
-pub fn demo(path:&str, prefix:&str){
-
-    let snap_precision = 0.0001;
-    let mut input = Spectrum::load(path, 0.001).expect("failed to load input");
-
-    let grid = GRID1D::new(1000,100.,1000.,0.0001,nm);
-
-
-
-
-    let bins = vec![100.,300.,400.,500.,700.,1000.];
-    let psf_directories = vec![
-        "/Users/mayabasu/Desktop/NUV Out-of-Band-2/300 nm",
-        "/Users/mayabasu/Desktop/NUV Out-of-Band-2/400 nm",
-        "/Users/mayabasu/Desktop/NUV Out-of-Band-2/500 nm",
-        "/Users/mayabasu/Desktop/NUV Out-of-Band-2/700 nm",
-        "/Users/mayabasu/Desktop/NUV Out-of-Band-2/1000 nm"];
-    let mut bins = (0..bins.len()-1).map(|i|{
-        let lower = bins[i];
-        let upper = bins[i+1];
-        let directory = psf_directories[i];
-        println!("Bin {i}: {lower} - {upper} nm -> {directory}");
-        SpectralResponse::square_wave(grid,lower,upper)
-    }).collect::<Vec<SpectralResponse>>();
-
-
-    /*
-
-    let bins = bins.iter_mut().enumerate().map(|(i,bin)|{
-        let mut binned = input.clone().apply_spectral_response(bin);
-        binned.write_to_dat("# bin", &format!("src/outputs/{}_bin_{}",prefix,i));
-        input.clone()
-    }).collect::<Vec<Spectrum>>();
-
-     */
-
-    test(input.apply_spectral_response(&mut bins[4]))
-
-    /*
-
-
-    let mut mirror_response = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/mirror_reflectivity.dat",
-        snap_precision).unwrap();
-
-    let mut dichroic_reflection = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/reflection_UVIM_dichroic_response.dat",
-        snap_precision).unwrap();
-
-    let mut dichroic_transmission = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/transmission_UVIM_dichroic_response.dat",
-        snap_precision).unwrap();
-
-    let mut fuv_contamination = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_FUV_contamination.dat",
-        snap_precision).unwrap();
-
-    let mut nuv_contamination = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_NUV_contamination.dat",
-        snap_precision
-    ).unwrap();
-
-    let mut fuv_filter_response = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_FUV_filter_response.dat",
-        snap_precision
-    ).unwrap();
-
-    let mut nuv_filter_response = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_NUV_filter_response.dat",
-        snap_precision
-    ).unwrap();
-
-    let mut nuv_qe = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_NUV_QE.dat",
-        snap_precision
-    ).unwrap();
-
-
-    let fuv_path = SpectralResponse::multiply_responses(vec![
-        fuv_contamination, fuv_filter_response
-    ]);
-
-
-    dichroic_reflection.regrid(&grid).write_to_dat("selkfjslef", "lskef");
-    nuv_qe.regrid(&grid).write_to_dat("#selkfjslef", "lskef");
-
-     */
-
-
-}
-
-
-pub fn test(input:Spectrum){
-    let snap_precision = 0.0001;
-
-    let grid = GRID1D::new(1000,100.,1000.,0.0001,nm);
-
-    //let mut input = Spectrum::new_flat(grid, 11.,AbMagnitude);
-    //let mut input = Spectrum::load("/Users/mayabasu/PycharmProjects/make_inputs/inputs/input_spectra_1", 0.001).expect("failed to load input");
-
-
-
-    let mut input = input.convert_to(&f_lambda);
-    input.write_to_dat("#generated_flat","src/test_outputs/input");
-
-    let mut mirror_response = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/mirror_reflectivity.dat",
-        snap_precision).unwrap();
-
-    mirror_response.write_to_dat("#1X mirror", "src/test_outputs/mirror");
-    let mut triple_mirror = mirror_response.multiply(&mirror_response).multiply(&mirror_response);
-    let mut mirror_plus_input = input.clone().apply_spectral_response(&mut triple_mirror);
-
-    mirror_response.write_to_dat("#1X mirror", "src/test_outputs/mirror");
-    triple_mirror.write_to_dat("#3X mirror", "src/test_outputs/triple_mirror");
-    mirror_plus_input.write_to_dat("#3X mirror + input", "src/test_outputs/mirror_plus_input");
-
-    let mut dichroic_reflection = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/reflection_UVIM_dichroic_response.dat",
-        snap_precision).unwrap();
-
-    let mut dichroic_transmission = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/transmission_UVIM_dichroic_response.dat",
-        snap_precision).unwrap();
-
-
-    dichroic_reflection.write_to_dat("#dichroic reflection","src/test_outputs/reflection");
-    dichroic_transmission.write_to_dat("#dichroic transmission","src/test_outputs/transmission");
-
-
-    let mut tot_ref = mirror_plus_input.clone().apply_spectral_response(&mut dichroic_reflection);
-    let mut tot_trans = mirror_plus_input.apply_spectral_response(&mut dichroic_transmission);
-
-
-     //   let mut mirror_transmission_input = mirror_plus_input.clone().apply_spectral_response(&mut dichroic_transmission);
-     //   let mut mirror_reflection_input = input.apply_spectral_response(&mut triple_mirror).apply_spectral_response(&mut dichroic_reflection);
-
-            //mirror_plus_input.apply_spectral_response(&mut dichroic_reflection);
-
-    tot_ref.write_to_dat("#3X mirror + dichroic reflection + input","src/test_outputs/mirror_ref");
-
-    tot_trans.write_to_dat("#3X mirror + dichroic transmission + input","src/test_outputs/mirror_trans");
-
-
-    let mut fuv_filter_response = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_FUV_filter_response.dat",
-        snap_precision
-    ).unwrap();
-
-    let mut nuv_filter_response = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_NUV_filter_response.dat",
-        snap_precision
-    ).unwrap();
-
-    let mut nuv_qe = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_NUV_QE.dat",
-        snap_precision
-    ).unwrap();
-
-
-    let mut nuv_filter_plus_qe = nuv_qe.multiply(&mut nuv_filter_response);
-    nuv_filter_plus_qe.write_to_dat("#qe plus filter for nuv", "src/test_outputs/nuv_filter_plus_qe");
-
-    fuv_filter_response.write_to_dat("# fuv filter response", "src/test_outputs/fuv_filter");
-    nuv_filter_response.write_to_dat("# nuv filter response", "src/test_outputs/nuv_filter");
-    nuv_qe.write_to_dat("# nuv QE", "src/test_outputs/nuv_qe");
-
-    let mut tot_ref_plus_filter = tot_ref.apply_spectral_response(&mut fuv_filter_response);
-    let mut tot_trans_plus_filter = tot_trans.apply_spectral_response(&mut nuv_filter_response)
-        .apply_spectral_response(&mut nuv_qe);
-    tot_ref_plus_filter.write_to_dat("#mirror ref fuv filter", "src/test_outputs/fuv");
-    tot_trans_plus_filter.write_to_dat("#mirror ref nuv filter nuv qe", "src/test_outputs/nuv");
-
-
-
-    let mut fuv_contamination = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_FUV_contamination.dat",
-        snap_precision).unwrap();
-
-    let mut nuv_contamination = SpectralResponse::load(
-        "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_NUV_contamination.dat",
-        snap_precision
-    ).unwrap();
-
-    fuv_contamination.write_to_dat("#fuv contamination", "src/test_outputs/fuv_con");
-    nuv_contamination.write_to_dat("#nuv contamination", "src/test_outputs/nuv_con");
-
-
-        let mut full_fuv = tot_ref_plus_filter.apply_spectral_response(&mut fuv_contamination);
-        let mut full_nuv = tot_trans_plus_filter.apply_spectral_response(&mut nuv_contamination);
-    full_fuv.write_to_dat("#full fuv", "src/test_outputs/full_fuv");
-    full_nuv.write_to_dat("#full nuv", "src/test_outputs/full_nuv");
-}
-
+use crate::geometry::{CoordinateSystem, Point, GRID2D};
+use crate::gridded_data::{DATA1D, DATA2D};
+use crate::gridded_data::DetectorUnits::Electrons;
+use crate::telescope::{Detector, PsfGrid, SpatialEffect, SpectralResponse, Spectrum};
+use crate::uvex::config::Config;
 
 pub struct UVEX{
 
-    mirror_response: SpectralResponse,
+    pub fuv: SpectralResponse,
+    pub nuv: SpectralResponse,
 
-    dichroic_transmission: SpectralResponse,
-    dichroic_reflection: SpectralResponse,
+    pub nuv_bands: Vec<f64>,
+    pub nuv_psfs: Vec<PsfGrid>,
 
-    nuv_filter: SpectralResponse,
-    fuv_filter: SpectralResponse,
+    pub fuv_psf: PsfGrid,
+    pub sky_coord: CoordinateSystem,
+    pub detector: Detector,
+    pub psf_coords: CoordinateSystem,
 
-    nuv_qe: SpectralResponse,
-
-    nuv_contamination: SpectralResponse,
-    fuv_contamination: SpectralResponse
 
 
 }
 
 impl UVEX{
-    pub fn load() -> Self{
+    pub fn load(config:Config) -> Self{
+        let snap_precision = 0.00001;
+
+        let mirror_response = SpectralResponse::load(
+            &config.mirror_response.1,
+            snap_precision).unwrap();
+
+        let dichroic_reflection = SpectralResponse::load(
+            &config.dichroic_reflection.1,
+            snap_precision).unwrap();
+
+        let dichroic_transmission = SpectralResponse::load(
+            &config.dichroic_transmission.1,
+            snap_precision).unwrap();
+
+        let fuv_filter = SpectralResponse::load(
+            &config.fuv_filter.1,
+            snap_precision
+        ).unwrap();
+
+        let nuv_filter = SpectralResponse::load(
+            &config.nuv_filter.1,
+            snap_precision
+        ).unwrap();
+
+        let nuv_qe = SpectralResponse::load(
+            &config.nuv_qe.1,
+            snap_precision
+        ).unwrap();
+
+        let fuv_contamination = SpectralResponse::load(
+            &config.fuv_contamination.1,
+            snap_precision).unwrap();
+
+        let nuv_contamination = SpectralResponse::load(
+            &config.nuv_contamination.1,
+            snap_precision
+        ).unwrap();
+
+        let full_fuv = mirror_response.clone()
+            .multiply(&mirror_response)
+            .multiply(&mirror_response)
+            .multiply(&dichroic_reflection)
+            .multiply(&fuv_filter)
+            .multiply(&fuv_contamination);
+
+        let full_nuv = mirror_response.clone()
+            .multiply(&mirror_response)
+            .multiply(&mirror_response)
+            .multiply(&dichroic_transmission)
+            .multiply(&nuv_filter)
+            .multiply(&nuv_qe)
+            .multiply(&nuv_contamination);
+
+        let sky_coordinates = CoordinateSystem::new(
+            [1.,0.],
+            [0.,1.],
+            [0.,0.]
+        );
+
+        let psf_grid = GRID2D::new(
+            [18, 18],
+            [0.2, 0.2],
+            Point::new(-0.56, -0.06, &sky_coordinates),
+            0.00001,
+            sky_coordinates.clone());
+
+
+        let mut fuv_psf = PsfGrid::new(
+            "FUV PSF grid".to_string(),
+            psf_grid,
+            config.fuv_psf_directory,
+            ("XFLD".to_string(), "YFLD".to_string()));
+        fuv_psf.load_data_frames(64,64);
+        let mut nuv_psfs = Vec::new();
+
+        for path in config.nuv_psf_directories{
+            let mut psfs = PsfGrid::new(
+                path.clone(),
+                psf_grid,
+                path.clone(),
+                ("XFLD".to_string(), "YFLD".to_string()));
+            psfs.load_data_frames(128,128);
+            nuv_psfs.append(*psfs)
+
+        }
+
+        let PSF_coords = CoordinateSystem::new(
+            [0.1,0.],
+        [0.,0.1],
+        [0.,0.]);
+
+
+        let PsfGrid = GRID2D::new(
+        [128,128],
+        [1.,1.],
+        Point::new(0.,0.,&PSF_coords),
+        0.0001,
+        PSF_coords,
+        );
+
+        /*
+
+
+        let test_point = Point::new(0.,0.,&sky_coordinates);
+        let psf_1 = nuv_1000_psf.interpolated_psf(&test_point);//nuv_300_psf.interpolated_psf(&test_point);
+        let patch1 = SpatialEffect::new(PsfGrid.clone(), psf_1).unwrap();
+
+        let PsfGrid = GRID2D::new(
+            [128,128],
+            [1.,1.],
+            Point::new(50.,50.,&PSF_coords),
+            0.0001,
+            PSF_coords,
+        );
+
+        let psf_2 = nuv_300_psf.interpolated_psf(&test_point);
+        let patch2 = SpatialEffect::new(PsfGrid.clone(), psf_2).unwrap();
+        let detector_grid = GRID2D::new(
+            [228,228],
+            [1.,1.],
+            Point::new(0.,0.,&PSF_coords),
+            0.0001,
+            PSF_coords,
+        );
+        let mut detector = Detector::initialize(detector_grid,Electrons);
+        detector.add(&patch2.clone());
+        detector.add(&patch1.clone());
+        detector.write_to_fits("detector.fits");
+
+        patch1.write_to_fits("patch1.fits");
+        patch2.write_to_fits("patch2.fits");
+        println!("{:?}",patch2.data());
+
+         */
+
+
+        let detector_coords = CoordinateSystem::new(
+            [0.1,0.0],
+            [0.,0.1],
+            [0.,0.]);
+
+        let detector_grid = GRID2D::new(
+            [13*5,13],
+            [1.,1.],
+            Point::new(0.,0.,&detector_coords),
+            0.0001,
+            detector_coords,
+        );
+        let mut detector = Detector::initialize(detector_grid,Electrons);
+
+
+
+
+
+        UVEX{
+            fuv,
+            nuv,
+            nuv_bands: config.nuv_bands,
+            nuv_psfs,
+            fuv_psf,
+            sky_coord: sky_coordinates,
+            detector,
+            psf_coords: PSF_coords,
+        }
+    }
+
+    pub fn get_psfs(&self, point: &Point) -> (Vec<Vec<f64>>,Vec<Vec<Vec<f64>>>){
+        let fuv_psf = self.fuv_psf.interpolated_psf(point);
+        let nuv_psfs:Vec<Vec<Vec<f64>>> = self.nuv_psfs.iter().map(|grid|{
+            grid.interpolated_psf(point)
+        }).collect();
+        (fuv_psf, nuv_psfs)
+    }
+    pub fn apply_fuv_path(&self, input:Spectrum) -> Spectrum{
+        let mut fuv = self.fuv.clone();
+        input.apply_spectral_response(&mut fuv)
 
     }
+    pub fn apply_nuv_path(&self, input:Spectrum) -> Spectrum{
+        let mut nuv = self.nuv.clone();
+        input.apply_spectral_response(&mut nuv)
+
+    }
+    pub fn triple_mirror(&self) -> SpectralResponse{
+
+    }
+
+
+
+
+
+
+
 }
 
 

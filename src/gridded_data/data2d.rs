@@ -18,7 +18,8 @@ pub trait DATA2D<Unit:super::units::Unit>{
             !Regular::check(*x)
         }){
             Some(_) => {false}
-            _ => {true}
+
+  _ => {true}
         }
     }
     fn value_at_index(&self, index:usize) -> f64{
@@ -58,7 +59,12 @@ pub trait DATA2D<Unit:super::units::Unit>{
             .collect()
 
     }
+
+
     fn combine(&mut self, effect: &SpatialEffect, effect_type: EffectType) {
+        println!("self grid {:?}",self.grid());
+        println!("other grid {:?}",effect.grid);
+        assert_eq!(*self.grid(),effect.grid.clone());
 
 
 
@@ -72,12 +78,14 @@ pub trait DATA2D<Unit:super::units::Unit>{
         let (min_x,min_y,_,_) = self.grid().project_fit(&upper_left_corner,false);
         let (_,max_y,_,_) = self.grid().project_fit(&lower_left_corner,false);
         let (max_x,_,_,_) = self.grid().project_fit(&lower_right_corner,false);
-        //println!("lkjdf{:?} {:?} {:?} {:?}",min_x,min_y,max_x,max_y);
+        println!("combining lkjdf {:?} {:?} {:?} {:?}",min_x,min_y,max_x,max_y);
         //TODO:check bounds!
+        let mut count = 0;
         (min_y..max_y).for_each(|i|{
             (min_x..max_x).for_each(|j| {
                 let pixel = self.grid().grid_number(i, j);
                 let detector_pixel_position = self.grid().locate(pixel);
+                count += 1;
                // println!("{:?}",detector_pixel_position);
                 let effect_value = effect.value(&detector_pixel_position);
                 match effect_type {
@@ -89,11 +97,12 @@ pub trait DATA2D<Unit:super::units::Unit>{
                     }
                 }
             })
-
         });
+        println!("added to {count} pixels");
 
     }
     fn add(&mut self, effect: &SpatialEffect){
+        println!("doing addition");
         self.combine(effect, EffectType::Additive)
     }
     fn multiply(&mut self, effect: &SpatialEffect){
@@ -101,6 +110,7 @@ pub trait DATA2D<Unit:super::units::Unit>{
     }
     fn write_to_fits(&self, path:&str){
         let shape = self.grid().xy_num();
+        assert!(Self::is_data_regular(&self.data()));
         let primary_hdu = Hdu::new(&shape, self.data().into_iter().flatten().map(|x|*x).collect());
         //TODO: add header
         Fits::create(path, primary_hdu).expect(

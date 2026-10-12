@@ -43,6 +43,49 @@ impl Detector {
         }
     }
 
+    pub fn add(&mut self,effect:&SpatialEffect){
+        for grid_point in 0..effect.grid().num_points(){
+            let location = effect.grid().locate(grid_point);
+            if self.grid.is_point_inside(&location){
+                let value = effect.value(&location);
+                let (x_mod,y_mod,x_res,y_res) = self.grid.fit_grid(&location,true).unwrap();
+                self.data[y_mod][x_mod] += value;
+            }
+
+        }
+    }
+
+
+    pub(crate) fn combine_2_add(&mut self, effect:&SpatialEffect) {
+        let mut points_inside = 0;
+        let mut nonzero = 0;
+        for y in 0..self.grid().y_num(){
+            for x in 0..self.grid().x_num(){
+                let grid_number = self.grid().grid_number(x,y);
+                let point = self.grid().locate(grid_number);
+                let value = if effect.grid().is_point_inside_cells(&point){
+
+                    points_inside += 1;
+                    effect.value(&point)
+
+                }else{
+                    0.0
+                };
+
+                if value != 0.0{
+                    nonzero += 1;
+                }
+
+                self.data[y][x] += value;
+
+
+
+            }
+        }
+        println!("{:?} points inside {:?}", points_inside,nonzero);
+
+    }
+
 }
 
 

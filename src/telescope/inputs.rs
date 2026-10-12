@@ -121,6 +121,10 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
         println!("WARNING UNIMPLEMENTED");
         average*self.grid.step_size()
     }
+
+    pub fn sum(&self)->f64{
+        self.data.iter().sum()
+    }
     pub fn to_band(&self, band_pass: &mut SpectralResponse)->f64{
         self.clone().apply_spectral_response(band_pass).integrate()
     }

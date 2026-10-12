@@ -269,9 +269,9 @@ impl GRID1D {
             return Location::Snapped(lower.value() as usize)
         };
 
-        println!("{:?} \
-        {:?} \
-        {:?}  {:?}", lower, upper, delta,self.step_size);
+      //  println!("{:?} \
+       // {:?} \
+       // {:?}  {:?}", lower, upper, delta,self.step_size);
 
         let scaled_residual = ((delta-lower*self.step_size)/self.step_size).value();
 

@@ -129,7 +129,7 @@ pub trait DATA1D<Unit:super::units::Unit>{
                 return Err(FileParsingError::FormatIncorrect("Expected two entries per row separated by '|' ".to_string()))
             }
             if !parsed_header{
-                println!("header: {:?}",line);
+               // println!("header: {:?}",line);
                 let unit  = Grid1DUnits::from_str(line[0])?;
                 grid_unit  = Some(unit);
                 let unit = Unit::from_str(line[1])?;

@@ -22,7 +22,7 @@ pub enum Corners {
     One(usize),
 }
 
-
+#[derive(PartialEq)]
 #[derive(Debug, Clone, Copy)]
 pub struct GRID2D {
     coordinate_system: CoordinateSystem,
@@ -111,6 +111,7 @@ impl GRID2D {
     }
     pub fn corner(&self)->Point{
         let half_size = self.size()/2.0;
+
         self.center-half_size
 
     }
@@ -131,7 +132,9 @@ impl GRID2D {
         let delta_x = x_index*self.xy_step_size[0];
         let delta_y = y_index*self.xy_step_size[1];
        // println!("{delta_x} {delta_y}");
-        let corner = self.corner().transform_to(&self.coordinate_system);
+        let corner = self.corner();
+            //.transform_to(&self.coordinate_system);
+        //println!("corner is {:?}",corner);
         //println!("{:?} {:?}  {:?}",delta_y,delta_x,corner);
 
         Point::new_from_regular(
@@ -164,6 +167,19 @@ impl GRID2D {
         let delta = point - &self.center();
         if (delta.x.value().abs() > (half_grid_size.x + self.snap_precision).value())|
             (delta.y.value().abs() > (half_grid_size.y + self.snap_precision).value()){
+            false
+        }else{
+            true
+        }
+
+    }
+
+
+    pub fn is_point_inside_cells(&self, point:&Point)-> bool{
+        let half_grid_size = self.size()/2.0;
+        let delta = point - &self.center();
+        if (delta.x.value().abs() > (half_grid_size.x + self.xy_step_size[0] + self.snap_precision).value())|
+            (delta.y.value().abs() > (half_grid_size.y + self.xy_step_size[1] + self.snap_precision).value()){
             false
         }else{
             true
@@ -301,7 +317,7 @@ impl GRID2D {
             Ok((x_mod,y_mod,x_res,y_res)) => {(x_mod,y_mod,x_res,y_res)}
             Err(err) => {return Err(err)}
         };
-        println!("{:?}",(x_mod,y_mod,x_res,y_res));
+        //println!("{:?}",(x_mod,y_mod,x_res,y_res));
 
         if (x_res.abs() < self.snap_precision()) & (y_res.abs() < self.snap_precision()){
             return Ok(Corners::One(self.grid_number(x_mod,y_mod)))
@@ -569,6 +585,7 @@ impl GRID2D {
 
 
 
+#[derive(Debug)]
 pub struct InterpolationData {
     pub corners: Corners,
     pub coefficients: Vec<Regular>,

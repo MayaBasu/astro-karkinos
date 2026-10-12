@@ -1,12 +1,13 @@
 
 use clap::Parser;
+use egui::CursorIcon::Default;
 use crate::geometry::{Grid1DUnits, Regular};
 use crate::telescope::{Detector, PsfGrid, SpatialEffect, SpectralResponse, Spectrum};
 use crate::geometry::{generate_notebook, CoordinateSystem, Point, ABSOLUTE_COORDINATES, GRID1D, GRID2D};
 use crate::geometry::Grid1DUnits::nm;
 use crate::gridded_data::{DATA1D, DATA2D};
 use crate::gridded_data::DetectorUnits::{AverageElectrons, Electrons};
-use crate::uvex::uvex::{demo, test};
+use crate::uvex::demo::{compare, demo};
 
 pub mod geometry;
 pub mod uvex;
@@ -18,172 +19,66 @@ pub mod gridded_data;
 
 pub fn main() {
 
-  //  let grid = GRID1D::new(1000,100.,1000.,0.0001,nm);
 
+    let grid = GRID2D::new([2,2],[1.,1.],
+    Point::new(0.1,-0.1,&ABSOLUTE_COORDINATES),0.001,ABSOLUTE_COORDINATES);
 
-   // let mut dichroic_reflection = SpectralResponse::load(
-   //     "/Users/mayabasu/PycharmProjects/make_inputs/inputs/reflection_UVIM_dichroic_response.dat",
-   //     0.001).unwrap();
+    for point in grid.locate_grid_points(){
+        for point in point{
+            println!("{:?}", (point.x.value(),point.y.value()))
+        }
+    }
+    let detectorgrid = GRID2D::new([5,5],[1.,1.],
+                           Point::new(0.,0.,&ABSOLUTE_COORDINATES),0.001,ABSOLUTE_COORDINATES);
 
-   // dichroic_reflection.write_to_dat("#dichroic reflection","src/test_outputs/reflection");
+    let corner = detectorgrid.locate(0);
+    //println!("{:?}", grid.is_point_inside_cells(&corner));
+    let effect = SpatialEffect::new(grid, vec![vec![1.,2.],vec![1.,2.]]).unwrap();
 
-  //  dichroic_reflection.regrid(&grid).write_to_dat("#dichroic reflection","src/test_outputs/reflection2");
 
+    let grid = GRID2D::new([2,2],[1.,1.],
+                           Point::new(2.0,1.0,&ABSOLUTE_COORDINATES),0.001,ABSOLUTE_COORDINATES);
 
 
+    let effect2 = SpatialEffect::new(grid, vec![vec![1.,2.],vec![3.,4.]]).unwrap();
 
-    demo("/Users/mayabasu/PycharmProjects/make_inputs/inputs/input_spectra_1", "2000");
-    /*
+    let mut detector = Detector::initialize(detectorgrid,Electrons);
+    //println!("{:?}",detector.data);
+    detector.add(&effect);
+    //detector.add(&effect2);
+    detector.write_to_fits("tester.fits");
 
-    let grid = GRID1D::new(1000,100.,1000.,0.0001,nm);
 
-    let response = Spectrum::load("/Users/mayabasu/PycharmProjects/JupyterProject/tablejhghj.dat",0.001).unwrap();
-    let mut response = SpectralResponse::load("/Users/mayabasu/PycharmProjects/make_inputs/inputs/mirror_reflectivity.dat", 0.001).unwrap();
-    demo("/Users/mayabasu/PycharmProjects/make_inputs/inputs/input_spectra_1", "2000");
-    demo("/Users/mayabasu/PycharmProjects/make_inputs/inputs/input_spectra_2","6000")
+    //effect.unwrap().write_to_fits("test.fits");
 
-     */
-    /*
-   // test_coordinate_system();
-    let mut grid = GRID2D::new(
-        [18,18],
-        [0.2,0.2],
-        Point::new(-0.56, -0.06,&ABSOLUTE_COORDINATES),
-        0.1,
-        ABSOLUTE_COORDINATES
-    );
 
 
-    let mut nuv_psf = PsfGrid::new(
-        "test".to_string(),
-        grid,
-        "/Users/mayabasu/Desktop/NUV Out-of-Band-2/300 nm".to_string(),
-        ("XFLD".to_string(), "YFLD".to_string()));
 
-    nuv_psf.load_data_frames(128,128);
 
-    let grid = GRID2D::new(
-        [128, 128],
-        [1.0,1.0] ,
-        Point::new(0.0,0.0,&ABSOLUTE_COORDINATES),
-        0.01,
-        ABSOLUTE_COORDINATES);
+    //let path = "/Users/mayabasu/PycharmProjects/make_inputs/inputs/blackbody_2000";
 
+  //  let input_spectrum = Spectrum::load(path,0.0001).expect("Failed to parse file");
 
-    let mut psf_300 = PsfGrid::new(
-        "test".to_string(),
-        grid,
-        "/Users/mayabasu/Desktop/NUV Out-of-Band-2/300 nm".to_string(),
-        ("XFLD".to_string(), "YFLD".to_string()));
 
-    nuv_psf.load_data_frames(128,128);
+    //compare(input_spectrum);
 
-    let grid = GRID2D::new(
-        [128, 128],
-        [1.0,1.0] ,
-        Point::new(0.0,0.0,&ABSOLUTE_COORDINATES),
-        0.01,
-        ABSOLUTE_COORDINATES);
+    //let sums = demo("/Users/mayabasu/PycharmProjects/make_inputs/inputs/blackbody_6000",6000);
 
 
+    //println!("2000, before: {:?}",sums.0);
+    //println!("2000, after: {:?}",sums.1);
+    let sums = demo("/Users/mayabasu/PycharmProjects/make_inputs/inputs/blackbody_2000",2000);
+    //println!("6000, before: {:?}",sums.0);
+    //println!("6000, after: {:?}",sums.1);
 
-    let mut psf_1000 = PsfGrid::new(
-        "test".to_string(),
-        grid,
-        "/Users/mayabasu/Desktop/NUV Out-of-Band-2/300 nm".to_string(),
-        ("XFLD".to_string(), "YFLD".to_string()));
 
-    nuv_psf.load_data_frames(128,128);
 
-    let grid = GRID2D::new(
-        [128, 128],
-        [1.0,1.0] ,
-        Point::new(0.0,0.0,&ABSOLUTE_COORDINATES),
-        0.01,
-        ABSOLUTE_COORDINATES);
+    // ([4.895859787633742e-7, 0.00011106758732255989, 0.002547734183133085, 0.08406616582973903, 0.9132745428138266], [0.012604229661030296, 0.00391622271841477, 0.05142988791885012, 0.15290649797431102, 0.7791431617273937])
+    //out of band
+    // ([4.895859787633742e-7, 0.00011106758732255989, 0.002547734183133085, 0.08406616582973903, 0.9132745428138266], [0.012604229661030296, 0.00391622271841477, 0.05142988791885012, 0.15290649797431102, 0.7791431617273937])
 
-
-
-
-    let psf = nuv_psf.grid_psf(10);
-    let psf = SpatialEffect::new(grid,
-                                 psf);
-    psf.unwrap().write_to_fits("test.fits");
-
-
-    let grid = GRID2D::new(
-        [3,3],
-        [1.0,1.0] ,
-        Point::new(0.0,0.0,&ABSOLUTE_COORDINATES),
-        0.01,
-        ABSOLUTE_COORDINATES);
-
-
-
-
-
-
-
-
-
-
-    let grid2 = GRID2D::new(
-        [2,2],
-        [400.0,400.0] ,
-        Point::new(0.0,0.0,&ABSOLUTE_COORDINATES),
-        0.0001,
-        ABSOLUTE_COORDINATES);
-
-    let grid = GRID2D::new(
-        [400,400],
-        [1.,1.] ,
-        Point::new(0.0,0.0,&ABSOLUTE_COORDINATES),
-        0.0001,
-        ABSOLUTE_COORDINATES);
-
-
-    let background = SpatialEffect::new(grid2,
-                                        vec![vec![0.,1.],
-                                             vec![0.3,1.2]]).unwrap();
-
-
-    let background = SpatialEffect::new(grid, background.re_grid_values(grid));
-    background.unwrap().write_to_fits("backgroundtest.fits");
-
-
-    let grid3 = GRID2D::new(
-        [3,3],
-        [200.,200.] ,
-        Point::new(0.0,0.0,&ABSOLUTE_COORDINATES),
-        0.0001,
-        ABSOLUTE_COORDINATES);
-
-
-
-    let background = SpatialEffect::new(grid3,
-                                        vec![vec![0.,3.,1.],
-                                             vec![0.3,3.,1.2],vec![0.3,3.,1.2]]).unwrap();
-
-
-    let background = SpatialEffect::new(grid, background.re_grid_values(grid));
-    background.unwrap().write_to_fits("backgroundteste.fits")
-
-     */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    //in band
+    // ([0.02362058240590498, 0.08267456689505587, 0.13850333035228973, 0.33208669046516043, 0.4231148298815891], [0.9946769158904017, 0.004014553483792915, 0.0008042865859994181, 0.0004137413733034587, 9.050266650235897e-5])
 
 }
 
