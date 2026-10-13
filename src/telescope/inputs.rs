@@ -131,4 +131,11 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
 
 }
 
+#[derive(Clone,Debug)]
+pub struct PointSource{
+    pub(crate) location: Point,
+    spectrum: Spectrum,
+    
+}
+
 

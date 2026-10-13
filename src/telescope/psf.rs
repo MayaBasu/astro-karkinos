@@ -46,7 +46,7 @@ impl PSF {
         //self.data = self.data.into_iter().flatten().map(|x|x*scalar).collect().chunk()
     }
     pub fn load_file(file: PathBuf, center:(Load, Load), size:(Load, Load), x_num:usize, y_num:usize) -> PSF {
-        println!("Loading {:?} into a DataFrame ",file);
+       // println!("Loading {:?} into a DataFrame ",file);
         let fits = Fits::open(file.clone()).expect("Failed to open FITS file");
         let primary_hdu= fits.iter().next().expect("Couldn't find primary HDU");
         let (mut data,shape) = match primary_hdu.read_data() {
@@ -57,7 +57,7 @@ impl PSF {
 
         let normalization:f64 = data.iter().sum();
         let data:Vec<f64> = data.iter().map(|x|x/normalization).collect();
-        println!("PSF has been normalized to {:?}",data.iter().sum::<f64>());
+        //println!("PSF has been normalized to {:?}",data.iter().sum::<f64>());
 
         assert_eq!(shape[0], x_num,"Diva down! Tried to load a file with data of the wrong x size"); //check that the data is the expected size
         assert_eq!(shape[1], y_num,"Diva down! Tried to load a file with data of the wrong y size");
@@ -175,7 +175,7 @@ impl PsfGrid{
 
 
 
-        println!("Loading data frames into grid. This overwrites any data previously loaded");
+      //  println!("Loading data frames into grid. This overwrites any data previously loaded");
         let mut data = vec![];
         let paths = fs::read_dir(self.directory_path.clone()).unwrap();
         let mut counter = 0;
@@ -205,7 +205,7 @@ impl PsfGrid{
         }
         data.sort_by_key(|x|x.0);
         self.data = data;
-        println!(" lsk Loaded {counter} files into a Grid Struct from {:?}",self.directory_path);
+        println!("Loaded {counter} PSF files from: {:?}",self.directory_path);
         assert_eq!(counter,self.grid.num_points(),"Loaded the wrong number of PSF files");
 
 

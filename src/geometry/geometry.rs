@@ -216,6 +216,9 @@ impl Point {
     pub fn new(x: f64, y: f64, coordinate_system: &CoordinateSystem) -> Point {
         Point { x: Regular::try_from(x), y:Regular::try_from(y), coordinate_system: coordinate_system.clone() }
     }
+    pub fn zero(coordinate_system: &CoordinateSystem)->Point{
+        Point::new(0.,0.,coordinate_system)
+    }
     pub fn new_from_regular(x:Regular,y:Regular, coordinate_system: &CoordinateSystem)->Point{
         Point {x,y,coordinate_system: coordinate_system.clone()}
     }

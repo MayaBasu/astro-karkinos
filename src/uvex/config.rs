@@ -1,5 +1,6 @@
-use astro_karkinos::geometry::CoordinateSystem;
-use astro_karkinos::telescope::{Detector, PsfGrid, SpectralResponse};
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone,Copy,Serialize,Deserialize)]
 pub enum Toggle{
     on,
     off,
@@ -7,7 +8,7 @@ pub enum Toggle{
 
 
 
-
+#[derive(Clone,Serialize,Deserialize)]
 pub struct Config{
 
     pub mirror_response: (Toggle, String),
@@ -60,9 +61,8 @@ pub struct Config{
 
 }
 
-impl Config{
-
-    pub fn defaults(generated_effects_path:String)-> Self{
+impl Default for Config{
+    fn default() -> Self {
         Self {
             mirror_response: (Toggle::on, "/Users/mayabasu/PycharmProjects/make_inputs/inputs/mirror_reflectivity.dat".to_string()),
             dichroic_transmission: (Toggle::on, "/Users/mayabasu/PycharmProjects/make_inputs/inputs/transmission_UVIM_dichroic_response.dat".to_string()),
@@ -92,7 +92,7 @@ impl Config{
 
             fuv_dead_pixels: (Toggle::on, "/Users/mayabasu/Desktop/uvex/detector_effects/fuv_dead_pixels".to_string()),
             nuv_dead_pixels: (Toggle::on, "/Users/mayabasu/Desktop/uvex/detector_effects/nuv_dead_pixels".to_string()),
-            
+
             psf_blur: (Toggle::on, "".to_string()),
 
 
@@ -107,5 +107,7 @@ impl Config{
             arcsec_per_pixel: 1.03,
             saturation_num_electrons: 17000,
         }
+
     }
 }
+

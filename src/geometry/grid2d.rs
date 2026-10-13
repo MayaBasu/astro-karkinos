@@ -516,11 +516,11 @@ impl GRID2D {
                 let c12 = -(x2 - x) * (y - y1);
                 let c21 = -(x - x1) * (y2 - y);
                 let c22 = -(x - x1) * (y - y1);
-                println!("The coefficients are {:?}",(c12.value(),c11.value(),c21.value(),c22.value()));
+               // println!("The coefficients are {:?}",(c12.value(),c11.value(),c21.value(),c22.value()));
                 //let normalization = (x2 - x1) * (y2 - y1);
                 let normalization = self.xy_step_size[0]*self.xy_step_size[1];
-                println!("CORNERS {:?} {:?} {:?} {:?}",Q12, Q11, Q21, Q22);
-                println!("norm {:?}",normalization.value());
+              //  println!("CORNERS {:?} {:?} {:?} {:?}",Q12, Q11, Q21, Q22);
+              //  println!("norm {:?}",normalization.value());
                 if normalization.value() ==0.0{
                     println!("NORM IS 0");
 
@@ -537,7 +537,7 @@ impl GRID2D {
 
                 let (x1, y1) = (Q1point.x, Q1point.y);
                 let (x2, y2) = (Q2point.x, Q2point.y);
-                println!("pos {:?} {:?} {:?} {:?}",x1.value(),y1.value(),x2.value(),y2.value());
+               // println!("pos {:?} {:?} {:?} {:?}",x1.value(),y1.value(),x2.value(),y2.value());
 
                 point.transform_to(&self.coordinate_system);
                 let x = point.x;
@@ -545,7 +545,7 @@ impl GRID2D {
 
                 if ((x1 - x2).abs() <  2.0*self.snap_precision) && ((y1 - y2).abs() > 2.0*self.snap_precision) {
                     //the corners are above and below the point
-                    println!("corners are above and below");
+                  //  println!("corners are above and below");
                     let c1 = (y2 - y).abs();
                     let c2 = (y1 - y).abs();
                     let normalization = self.xy_step_size[1];
@@ -559,7 +559,7 @@ impl GRID2D {
                     let c1 = (x2 - x).abs();
                     let c2 = (x1 - x).abs();
                     let normalization = self.xy_step_size[0];
-                    println!("Corners:{:?}  {:?}", Q1,Q2);
+                  //  println!("Corners:{:?}  {:?}", Q1,Q2);
                     return InterpolationData {
                         corners: Corners::Two(Q1, Q2),
                         coefficients: vec![c1, c2],

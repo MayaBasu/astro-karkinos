@@ -1,4 +1,4 @@
 pub mod uvex;
 pub mod demo;
-mod config;
-mod hallucinations;
+pub mod config;
+pub mod hallucinations;

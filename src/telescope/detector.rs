@@ -2,7 +2,7 @@ use crate::geometry::*;
 use crate::gridded_data::{DetectorUnits, SpectralUnits, DATA2D};
 use crate::telescope::effects::SpatialEffect;
 
-
+#[derive(Clone,Debug)]
 pub struct Detector {
     pub grid: GRID2D,
     pub data: Vec<Vec<f64>>,
@@ -52,6 +52,17 @@ impl Detector {
                 self.data[y_mod][x_mod] += value;
             }
 
+        }
+    }
+
+    pub fn add_background(&mut self,effect:&SpatialEffect){
+        for x in 0..self.grid.x_num(){
+            for y in 0..self.grid.y_num(){
+                let grid_point = self.grid.grid_number(x,y);
+                let location = self.grid.locate(grid_point);
+                let value = effect.value(&location);
+                self.data[y][x] += value;
+            }
         }
     }
 
