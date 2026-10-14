@@ -88,6 +88,7 @@ impl Unit for SpectralUnits{
         match str{
             "F_nu" => Ok(Self::F_nu),
             "f_lambda" => Ok(Self::f_lambda),
+            "phot-lamb" => Ok(Self::f_lambda),
             "F_lambda" =>Ok(Self::F_lambda),
             "AbMagnitude" =>Ok(Self::AbMagnitude),
             "Janskys" => Ok(Self::Janskys),

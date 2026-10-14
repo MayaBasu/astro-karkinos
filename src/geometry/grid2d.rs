@@ -163,12 +163,27 @@ impl GRID2D {
         )
     }
     pub fn is_point_inside(&self, point:&Point)-> bool{
+        let point = &point.transform_to(self.coordinate_system());
         let half_grid_size = self.size()/2.0;
         let delta = point - &self.center();
+
+        /*
+        println!(" is point inside?:\n\
+        center was at {:?} \n
+        half grid size {:?} \n\
+
+\n
+        point {:?},
+        \
+        ",self.center(),half_grid_size, point);
+
+         */
         if (delta.x.value().abs() > (half_grid_size.x + self.snap_precision).value())|
             (delta.y.value().abs() > (half_grid_size.y + self.snap_precision).value()){
+           // println!("verdict: NO");
             false
         }else{
+            //println!("verdict: YES");
             true
         }
 
@@ -176,6 +191,7 @@ impl GRID2D {
 
 
     pub fn is_point_inside_cells(&self, point:&Point)-> bool{
+        let point = &point.transform_to(self.coordinate_system());
         let half_grid_size = self.size()/2.0;
         let delta = point - &self.center();
         if (delta.x.value().abs() > (half_grid_size.x + self.xy_step_size[0] + self.snap_precision).value())|
@@ -189,6 +205,8 @@ impl GRID2D {
 
     //TODO: Could maybe clean up this function
     pub fn project_inside(&self, point: &Point) -> Point {
+
+        let point = point.transform_to(self.coordinate_system());
         let corner = self.corner();
 
         let new_x = if point.x < corner.x - self.snap_precision {
@@ -216,6 +234,7 @@ impl GRID2D {
         self.fit_grid(&point, fractional_residual).unwrap()
     }
     pub fn fit_grid(&self, point:&Point, fractional_residual: bool) -> Result<(usize,usize,f64,f64), GriddingError>{
+        let point = &point.transform_to(self.coordinate_system());
         if !self.is_point_inside(point){
             println!("Failed to grid point due to it being outside of the grid");
             return Err(GriddingError)
@@ -241,6 +260,7 @@ impl GRID2D {
     }
 
     pub fn snap(&self, point: &Point) -> Result<usize, GriddingError> {
+        let point = &point.transform_to(self.coordinate_system());
         match self.fit_grid(point,false){
             Ok((x_mod,y_mod,x_res,y_res)) => {
                 if (x_res.abs() > self.snap_precision()) | (y_res.abs() > self.snap_precision()){
@@ -313,6 +333,7 @@ impl GRID2D {
 
 
     pub fn find_corners(&self, point: &Point) -> Result<Corners, GriddingError> {
+        let point = &point.transform_to(self.coordinate_system());
         let (x_mod,y_mod,x_res,y_res) = match self.fit_grid(point,false){
             Ok((x_mod,y_mod,x_res,y_res)) => {(x_mod,y_mod,x_res,y_res)}
             Err(err) => {return Err(err)}
@@ -357,6 +378,7 @@ impl GRID2D {
     }
 
     pub fn plot_grid_points(&self, plot: &mut Plot, color:String, label:String) {
+
         let mut grid_points = Curve::new();
         grid_points.set_line_style("none")
             .set_label(format!("Grid points: {:?}", label).as_str())
@@ -412,7 +434,7 @@ impl GRID2D {
     }
 
     pub fn plot_point(&self, plot: &mut Plot, point:&Point){
-
+        let point = &point.transform_to(self.coordinate_system());
         let mut frame = Curve::new();
         frame.set_line_width(1.0)
             .set_label("Frame")
@@ -495,11 +517,13 @@ impl GRID2D {
     }
 
     pub fn projected_interpolation_coefficients(&self, point: &Point) -> InterpolationData {
+        let point = &point.transform_to(self.coordinate_system());
         self.interpolation_coefficients(&self.project_inside(point))
     }
 
 
     pub fn interpolation_coefficients(&self, point: &Point) -> InterpolationData {
+        let point = &point.transform_to(self.coordinate_system());
         match self.find_corners(point) {
             Ok(Corners::Four(Q12, Q11, Q21, Q22 )) => { // using the wikipedia convention https://en.wikipedia.org/wiki/Bilinear_interpolation
 
@@ -509,7 +533,7 @@ impl GRID2D {
 
                 let (x1, y2) = (Q12point.x, Q12point.y);
                 let (x2, y1) = (Q21point.x, Q21point.y); //y axis is flipped w.r.t wikipedia
-                point.transform_to(&self.coordinate_system);
+                let point = point.transform_to(&self.coordinate_system);
                 let x = point.x;
                 let y = point.y;
                 let c11 = -(x2 - x) * (y2 - y);
@@ -539,7 +563,7 @@ impl GRID2D {
                 let (x2, y2) = (Q2point.x, Q2point.y);
                // println!("pos {:?} {:?} {:?} {:?}",x1.value(),y1.value(),x2.value(),y2.value());
 
-                point.transform_to(&self.coordinate_system);
+                let point = point.transform_to(&self.coordinate_system);
                 let x = point.x;
                 let y = point.y;
 

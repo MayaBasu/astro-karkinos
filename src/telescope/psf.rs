@@ -88,7 +88,7 @@ impl PSF {
         let data:Vec<f64> = self.data.clone().iter().map(|x|x.to_owned()).flatten().collect();
         let data= data.iter().map(|x| *x).collect();
         println!("Trying to write to {path}, {:?}",data);
-        let mut primary_hdu = Hdu::new(&[64, 64], data);
+        let mut primary_hdu = Hdu::new(&[128, 128], data);
         println!("Done making hdu");
         let [x,y] = self.center.to_absolute().values();
         println!("x,y,{x} {y}");

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone,Copy,Serialize,Deserialize)]
+#[derive(Clone,Copy,Serialize,Deserialize,Debug)]
 pub enum Toggle{
     on,
     off,
@@ -8,7 +8,7 @@ pub enum Toggle{
 
 
 
-#[derive(Clone,Serialize,Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config{
 
     pub mirror_response: (Toggle, String),
@@ -72,7 +72,7 @@ impl Default for Config{
             nuv_qe: (Toggle::on, "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_NUV_QE.dat".to_string()),
             nuv_contamination: (Toggle::on, "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_NUV_contamination.dat".to_string()),
             fuv_contamination: (Toggle::on, "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_FUV_contamination.dat".to_string()),
-            nuv_bands: vec![300.,400.,500.,700.,1000.],
+            nuv_bands: vec![0., 300.,400.,500.,700.,1000.],
             nuv_psf_directories: vec!["/Users/mayabasu/Desktop/NUV Out-of-Band-2/300 nm".to_string(),
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/400 nm".to_string(),
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/500 nm".to_string(),

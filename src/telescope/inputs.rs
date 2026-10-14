@@ -1,6 +1,11 @@
+use std::fs;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 use rand_distr::num_traits::real::Real;
+
 use crate::geometry::*;
-use crate::geometry::FloatError::ValueNotRegular;
+
 use crate::gridded_data::{SpectralUnits, Unit, DATA1D};
 use crate::gridded_data::SpectralUnits::*;
 use crate::telescope::effects::{SpatialEffect, SpectralResponse};
@@ -134,8 +139,105 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
 #[derive(Clone,Debug)]
 pub struct PointSource{
     pub(crate) location: Point,
-    spectrum: Spectrum,
+    pub(crate) spectrum: Spectrum,
     
+}
+
+
+pub struct Input{
+    pub points: Vec<Point>,
+    pub weights: Vec<f64>,
+    pub spec_refs: Vec<usize>,
+    pub spectra: Vec<Spectrum>,
+}
+
+pub fn make_input(field_path:&str, spectrum_dir:&str)-> Input{
+    println!("Reading inputs: \n\
+     Field -> {} \n\
+     Spectra -> {}", field_path,spectrum_dir);
+    let arc_seconds_per_deg = 60.*60.;
+    let sky_coords = CoordinateSystem::new(
+        [1./arc_seconds_per_deg, 0.],
+        [0.,1./arc_seconds_per_deg],
+        [-0.56, -0.06],
+    );
+
+    let (x_list,y_list, weight_list,spec_ref_list) = parse_field_file(field_path);
+    let mut counter = 0;
+    let mut spectra = Vec::new();
+    for i in 0..*spec_ref_list.iter().max().unwrap() + 1 {
+        let path = format!("{spectrum_dir}/spectra_{i}.dat");
+        //println!("{:?}",path);
+
+        counter += 1;
+        let spectrum = Spectrum::load(&path, 0.0001);
+        spectra.push(spectrum.unwrap());
+    }
+
+    let points:Vec<Point> = x_list.iter().zip(y_list).map(|(&x, y)|{
+        Point::new(x,y,&sky_coords)
+    }).collect();
+
+    Input{
+        points,
+        weights: weight_list,
+        spec_refs: spec_ref_list,
+        spectra,
+    }
+
+
+}
+
+pub fn parse_field_file(path:&str)-> (Vec<f64>,Vec<f64>, Vec<f64>, Vec<usize>){
+
+    let file = File::open(path).unwrap();
+    let reader = BufReader::new(file);
+    let mut parsed_header = false;
+    let mut lines_read = 0;
+    let mut comments_ignored = 0;
+    let mut x_list = Vec::new();
+    let mut y_list = Vec::new();
+    let mut spec_ref_list = Vec::new();
+    let mut weight_list = Vec::new();
+
+
+
+    //TODO deal with 0 line files/uninitialization
+    for line in reader.lines(){
+
+        let line = line.unwrap();
+        if line.chars().nth(0).unwrap() =='#' {
+            comments_ignored += 1;
+            continue
+        }
+        let line = line.trim().split("|").map(|s|s.trim()).collect::<Vec<&str>>();
+        if line.len() != 4{
+            panic!()
+        }
+        if !parsed_header{
+            // println!("header: {:?}",line);
+            assert_eq!( line,["x", "y", "weight", "ref"]);
+            parsed_header = true;
+            continue
+        }
+
+        if parsed_header{
+            let x = line[0].parse::<f64>().unwrap();
+            let y = line[1].parse::<f64>().unwrap();
+            let weight = line[2].parse::<f64>().unwrap();
+            let spec_ref = line[3].parse::<f64>().unwrap() as usize;
+            x_list.push(x);
+            y_list.push(y);
+            weight_list.push(weight);
+            spec_ref_list.push(spec_ref);
+            lines_read += 1;
+
+            continue
+        }
+        else{unreachable!()}
+    };
+    assert!(lines_read > 1);
+    (x_list,y_list, weight_list,spec_ref_list)
 }
 
 

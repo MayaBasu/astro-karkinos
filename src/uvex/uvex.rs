@@ -3,10 +3,11 @@ use egui::Grid;
 use rayon::iter::ParallelIterator;
 use rayon::iter::IntoParallelIterator;
 use crate::gridded_data::units::DetectorUnits;
-use crate::geometry::{CoordinateSystem, Point, ABSOLUTE_COORDINATES, GRID2D};
+use crate::geometry::{CoordinateSystem, Point, ABSOLUTE_COORDINATES, GRID1D, GRID2D};
+use crate::geometry::Grid1DUnits::nm;
 use crate::gridded_data::{DATA1D, DATA2D};
 use crate::gridded_data::DetectorUnits::Electrons;
-use crate::telescope::{Detector, PointSource, PsfGrid, SpatialEffect, SpectralResponse, Spectrum};
+use crate::telescope::{Detector, Input, PointSource, PsfGrid, SpatialEffect, SpectralResponse, Spectrum};
 use crate::uvex::config::{Config, Toggle};
 
 
@@ -30,7 +31,6 @@ pub struct UVEX{
     pub nuv_contamination: SpectralResponse,
     pub fuv_contamination: SpectralResponse,
 
-
     pub fuv: SpectralResponse,
     pub nuv: SpectralResponse,
 
@@ -48,7 +48,7 @@ pub struct UVEX{
 
 
 
-    config: Config,
+    pub(crate) config: Config,
     pub fuv_read_noise: Vec<SpatialEffect>,
     pub nuv_read_noise: Vec<SpatialEffect>,
 
@@ -57,6 +57,9 @@ pub struct UVEX{
 
     pub fuv_dead_pixels: Vec<SpatialEffect>,
     pub nuv_dead_pixels: Vec<SpatialEffect>,
+
+    pub fuv_vinietting: SpatialEffect,
+    pub nuv_vinietting: SpatialEffect,
 }
 
 impl UVEX{
@@ -141,14 +144,22 @@ impl UVEX{
             [0.1,0.],
         [0.,0.1],
         [0.,0.]);
+        //TODO vinietting size not exactly known
 
 
+        let vinietting_grid = GRID2D::new([4096, 4096],
+                                              [3.7 / 4096., 3.7 / 4096.],
+                                              Point::new(-0.56, -0.06, &ABSOLUTE_COORDINATES),
+                                              0.000001,
+                                              ABSOLUTE_COORDINATES);
 
+        let fuv_vinietting = SpatialEffect::from_fits(
+            vinietting_grid,
+            &config.clone().fuv_flatfield_illumination.1).unwrap();
 
-
-
-
-
+        let nuv_vinietting = SpatialEffect::from_fits(
+            vinietting_grid,
+            &config.clone().nuv_flatfield_illumination.1).unwrap();
 
         let (detectors,detector_layout) = UVEX::detectors(config.clone());
         let (fuv_read_noise,
@@ -182,6 +193,8 @@ impl UVEX{
             nuv_dark_current,
             fuv_dead_pixels,
             nuv_dead_pixels,
+            fuv_vinietting,
+            nuv_vinietting,
             config
         }
     }
@@ -206,14 +219,14 @@ impl UVEX{
 
     pub fn detectors(config:Config) -> (Vec<Detector>,GRID2D) {
         let deg_per_pixel = config.arcsec_per_pixel/(60.*60.);
-        let x_gap_pixels = config.x_gap_mm*1000.;
-        let y_gap_pixels = config.y_gap_mm*1000.;
+        let x_gap_pixels = 0.;//T config.x_gap_mm*100.;
+        let y_gap_pixels = 0.; //Tconfig.y_gap_mm*100.;
 
         println!("Degrees per pixel: {:?}", deg_per_pixel);
         //TODO: maybe shift center?
         let detector_coordinates = CoordinateSystem::new(
-            [deg_per_pixel,0.],
-            [0.,deg_per_pixel],
+            [1.,0.],
+            [0.,1.],
             [-0.56, -0.06]);
 
         let detector_layout_grid = GRID2D::new(
@@ -242,13 +255,17 @@ impl UVEX{
                                                                              Vec<SpatialEffect>,
                                                                              Vec<SpatialEffect>,
                                                                              Vec<SpatialEffect>){
-        let fuv_read_noise:Vec<SpatialEffect> = detectors.iter()
+        let mut  fuv_read_noise:Vec<SpatialEffect> = detectors.iter()
             .enumerate()
             .map(|(i,detector)|{
             let grid = detector.grid;
             let path = format!("{}/fuv_read_noise_{:?}.fits",config.fuv_read_noise.1,i);
-            SpatialEffect::from_fits(grid,&path).unwrap()
+            let mut effect = SpatialEffect::from_fits(grid,&path).unwrap();
+                effect.cut_neg_values();
+                effect
         }).collect();
+
+
         println!("Loaded FUV read noise");
 
         let nuv_read_noise:Vec<SpatialEffect> = detectors.iter()
@@ -256,7 +273,9 @@ impl UVEX{
             .map(|(i,detector)|{
                 let grid = detector.grid;
                 let path = format!("{}/nuv_read_noise_{:?}.fits",config.nuv_read_noise.1,i);
-                SpatialEffect::from_fits(grid,&path).unwrap()
+                let mut effect = SpatialEffect::from_fits(grid,&path).unwrap();
+                effect.cut_neg_values();
+                effect
             }).collect();
         println!("Loaded NUV read noise");
 
@@ -265,7 +284,9 @@ impl UVEX{
             .map(|(i,detector)|{
                 let grid = detector.grid;
                 let path = format!("{}/fuv_dark_current_{:?}.fits",config.fuv_dark_current.1,i);
-                SpatialEffect::from_fits(grid,&path).unwrap()
+                let mut effect = SpatialEffect::from_fits(grid,&path).unwrap();
+                effect.cut_neg_values();
+                effect
             }).collect();
         println!("Loaded FUV dark current");
 
@@ -274,7 +295,9 @@ impl UVEX{
             .map(|(i,detector)|{
                 let grid = detector.grid;
                 let path = format!("{}/nuv_dark_current_{:?}.fits",config.nuv_dark_current.1,i);
-                SpatialEffect::from_fits(grid,&path).unwrap()
+                let mut effect = SpatialEffect::from_fits(grid,&path).unwrap();
+                effect.cut_neg_values();
+                effect
             }).collect();
         println!("Loaded NUV dark current");
 
@@ -284,7 +307,9 @@ impl UVEX{
             .map(|(i,detector)|{
                 let grid = detector.grid;
                 let path = format!("{}/fuv_dead_pixels_{:?}.fits",config.fuv_dead_pixels.1,i);
-                SpatialEffect::from_fits(grid,&path).unwrap()
+                let mut effect = SpatialEffect::from_fits(grid,&path).unwrap();
+                effect.cut_neg_values();
+                effect
             }).collect();
         println!("Loaded FUV dead pixels");
 
@@ -293,7 +318,9 @@ impl UVEX{
             .map(|(i,detector)|{
                 let grid = detector.grid;
                 let path = format!("{}/nuv_dead_pixels_{:?}.fits",config.nuv_dead_pixels.1,i);
-                SpatialEffect::from_fits(grid,&path).unwrap()
+                let mut effect = SpatialEffect::from_fits(grid,&path).unwrap();
+                effect.cut_neg_values();
+                effect
             }).collect();
         println!("Loaded NUV dead pixels");
 
@@ -315,33 +342,100 @@ impl UVEX{
 
         GRID2D::new(
             [18, 18],
-            [0.2, 0.2],
+            [0.2., 0.2],
             Point::new(-0.56, -0.06, &sky_coordinates),
             0.00001,
             sky_coordinates.clone())
     }
 
 
-    pub fn run(&mut self, background:SpatialEffect,channel:Channel, point_sources: Vec<PointSource>, exposure_time: f64) {
-
+    pub fn run(&mut self, background:SpatialEffect,channel:Channel, input: Input, exposure_time: f64) {
+        println!("{:?} point sources with {:?} distinct spectra", input.points.len(), input.spectra.len());
         let start = Instant::now();
-        (0..self.detectors.len()).into_par_iter().for_each(|i|{
+        println!("NUV spectral bins:");
+        let grid = GRID1D::new(9900,100.,1000.,0.0001,nm);
+
+        let mut polychromatic_bandpasses_nuv = (0..self.nuv_bands.len()-1).map(|i|{
+            let lower = self.nuv_bands[i];
+            let upper = self.nuv_bands[i+1];
+            let directory = self.config.nuv_psf_directories[i].clone();
+            println!("Bin {i}: {lower} - {upper} nm -> {directory}");
+            SpectralResponse::square_wave(grid,lower,upper)
+        }).collect::<Vec<SpectralResponse>>();
 
 
-            let mut detector = self.detectors[i].clone();
+
+        (0..self.detectors.len()).into_iter().for_each(|i|{
+
+            let mut polychromatic_bandpasses_nuv = polychromatic_bandpasses_nuv.clone();
+
+
+            let mut detector:Detector = self.detectors[i].clone();
             detector.add_background(&background);
 
             let mut dropped = 0;
             let detector_grid = detector.grid.clone();
-            for (num, point) in point_sources.clone().iter().enumerate() {
-                if (num % 100 == 0)&& (num>0) {
-                    println!("Done {num} sources for detector number {i}");
+            for source_number in 0..input.points.len() {
+                if (source_number % 100 == 0)&& (source_number>0) {
+                    println!("Done {source_number} sources for detector number {i}");
                 }
-                match detector_grid.is_point_inside(&point.location) {
+                let point:&Point = &input.points[source_number];
+                let spectra_ref = input.spec_refs[source_number];
+                let spectra = input.spectra[spectra_ref].clone();
+
+                match detector_grid.is_point_inside(point) {
                     true => {
+                        println!("DIDNT DROP POINT");
+                        match channel{
+                            Channel::FUV => {panic!()}
+                            Channel::NUV => {
+
+                                let mut spectra = spectra.clone().apply_spectral_response(&mut self.nuv.clone());
+                                let bands:Vec<f64> = polychromatic_bandpasses_nuv.iter_mut().enumerate().map(|(i,bin)|{
+                                    let mut binned = spectra.clone().apply_spectral_response(bin);
+                                    binned.sum()
+                                }).collect();
+                                println!("{:?}", bands);
+
+                                let deg_per_pixel = self.config.arcsec_per_pixel/(60.*60.);
+                                let coordinates = self.detectors[0].grid.coordinate_system();
+
+                                self.nuv_psfs
+                                    .iter()
+                                    .enumerate()
+                                    .for_each(|(bin_num, NUV_PSF_grid)|{
+                                        let local_psf_grid = GRID2D::new(
+                                            [128,128],
+                                            [0.1,0.1],
+                                            point.clone(),
+                                            0.0001,
+                                            coordinates.clone(),
+                                        );
+                                        let data = NUV_PSF_grid.interpolated_psf(point);
+                                        println!("PSF TOTAL SUM is {:?}", data.iter().flatten().sum::<f64>());
+                                        let mut effect = SpatialEffect::new(local_psf_grid, data.clone()).unwrap();
+                                        effect.scale(bands[i]*10000.);
+                                        println!("{:?}", effect.grid.center().to_absolute().values());
+                                        println!("{:?}", effect.grid.center());
+                                        println!("scaled PSF TOTAL SUM is {:?}", effect.data.iter().flatten().sum::<f64>());
+
+                                       // println!("{:?}", effect.data().iter().flatten().sum::<f64>());
+                                       // println!("sum before is {:?}", detector.data.iter().flatten().sum::<f64>());
+                                        detector.add(&effect);
+                                        println!(" detector {i} sum after is {:?}", detector.data.iter().flatten().sum::<f64>());
+
+                                    });
+                            }
+                        }
 
                     }
-                    false => {dropped += 1}
+                    false => {
+                        //panic!();
+
+                       // println!("point at {:?} was outside detecot {:?}", point.to_absolute(), i);
+
+
+                        dropped += 1}
                 }
 
             }
@@ -349,6 +443,13 @@ impl UVEX{
 
             match channel {
                 Channel::FUV => {
+
+                    match self.config.fuv_flatfield_illumination.0{
+                        Toggle::on => {
+                            detector.add(&self.fuv_vinietting)
+                        }
+                        Toggle::off => {println!("skipped fuv vinietting")}
+                    }
 
                     match self.config.fuv_read_noise.0 {
                         Toggle::on => {
@@ -372,6 +473,13 @@ impl UVEX{
                     }
                 }
                 Channel::NUV => {
+
+                    match self.config.nuv_flatfield_illumination.0{
+                        Toggle::on => {
+                            detector.add(&self.nuv_vinietting)
+                        }
+                        Toggle::off => {println!("skipped nuv vinietting")}
+                    }
 
                     match self.config.nuv_read_noise.0 {
                         Toggle::on => {
@@ -399,23 +507,10 @@ impl UVEX{
 
                 }
             }
-            detector.write_to_fits(&format!("/Users/mayabasu/Desktop/Output/detector_{i}.fits"))
+            detector.write_to_fits(&format!("/Users/mayabasu/Desktop/Output/persei_detector_{i}.fits"))
 
         });
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     }
 

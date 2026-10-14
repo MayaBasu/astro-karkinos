@@ -31,7 +31,8 @@ pub trait DATA2D<Unit:super::units::Unit>{
         self.data()[y][x]
     }
     fn value(&self,point:&Point)->f64{
-        let interpolation_data = self.grid().projected_interpolation_coefficients(point);
+        let point = point.transform_to(&self.grid().coordinate_system());
+        let interpolation_data = self.grid().projected_interpolation_coefficients(&point);
 
         let corners = match interpolation_data.corners{
             Corners::Four(one, two, three, four) => {

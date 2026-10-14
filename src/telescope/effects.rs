@@ -85,7 +85,7 @@ impl SpectralResponse{
 #[derive(Clone, Debug)]
 pub struct SpatialEffect{
     pub(crate) grid: GRID2D,
-    data:Vec<Vec<f64>>,
+    pub(crate) data:Vec<Vec<f64>>,
 }
 
 
@@ -107,6 +107,21 @@ impl DATA2D<UnitlessUnit> for SpatialEffect{
 } 
 
 impl SpatialEffect{
+
+    pub fn cut_neg_values(&mut self){
+
+        let new_data = self.data.iter().map(|row|{
+            row.iter().map(|element|{
+                if element > &0.0{
+                    *element
+                }else{
+                    0.0
+                }
+            }).collect()
+        }).collect();
+        self.data = new_data;
+
+    }
 
     pub fn scale(&mut self, scalar:f64){
         let new_data = self.data.iter().map(|row|{
@@ -130,7 +145,8 @@ impl SpatialEffect{
     }
 
     pub fn new(grid:GRID2D, data: Vec<Vec<f64>>) -> Result<SpatialEffect,FloatError>{
-        let data = Self::normalize(data)?;
+        //let data = Self::normalize(data)?;
+        Self::is_data_regular(&data);
        // println!("{:?}",grid);
         assert_eq!(data.len(), grid.y_num());
         data.iter().for_each(|row|
