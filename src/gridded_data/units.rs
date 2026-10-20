@@ -49,7 +49,8 @@ pub enum SpectralUnits {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum DetectorUnits {
     Electrons,
-    AverageElectrons
+    AverageElectrons,
+    ADU,
 }
 
 impl Unit for DetectorUnits{
@@ -68,6 +69,7 @@ impl Display for DetectorUnits{
         match &self{
             DetectorUnits::Electrons => {write!(f, "Electrons")}
             DetectorUnits::AverageElectrons => {write!(f, "Average Electrons")}
+            DetectorUnits::ADU => {write!(f, "ADU")}
         }
     }
 }

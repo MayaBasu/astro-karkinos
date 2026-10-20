@@ -203,6 +203,10 @@ impl GRID2D {
 
     }
 
+
+
+
+
     //TODO: Could maybe clean up this function
     pub fn project_inside(&self, point: &Point) -> Point {
 
@@ -279,7 +283,7 @@ impl GRID2D {
 
 
 
-    pub fn bin_up_patch(&self, center_of_the_corner_pixel: Point, psf: &Vec<Vec<f64>>, scale: usize) -> ((usize, usize), Vec<Vec<f64>>) { //TODO make this grid dependent
+    pub fn bin_up_patch(&self, center_of_the_corner_pixel: &Point, psf: &Vec<Vec<f64>>, scale: usize) -> ((usize, usize), Vec<Vec<f64>>) { //TODO make this grid dependent
 
         let (x_mod, y_mod, x_residual, y_residual) = match self.fit_grid(&center_of_the_corner_pixel, true) {
             Ok((x_mod,y_mod,x_res,y_res)) => {(x_mod,y_mod,x_res,y_res)}

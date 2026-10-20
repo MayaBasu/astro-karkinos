@@ -31,14 +31,14 @@ pub struct Config{
     pub fuv_flatfield_illumination: (Toggle, String),
     pub nuv_flatfield_illumination: (Toggle, String),
 
-    pub fuv_read_noise: (Toggle, String),
-    pub nuv_read_noise: (Toggle, String),
+    pub fuv_read_noise: (Toggle, Option<String>),
+    pub nuv_read_noise: (Toggle, Option<String>),
 
-    pub fuv_dark_current:  (Toggle, String),
-    pub nuv_dark_current:  (Toggle, String),
+    pub fuv_dark_current:  (Toggle, Option<String>),
+    pub nuv_dark_current:  (Toggle, Option<String>),
 
-    pub fuv_dead_pixels: (Toggle, String),
-    pub nuv_dead_pixels:  (Toggle, String),
+    pub fuv_dead_pixels: (Toggle, Option<String>),
+    pub nuv_dead_pixels:  (Toggle,Option< String>),
 
     pub psf_blur: (Toggle, String),
 
@@ -58,6 +58,16 @@ pub struct Config{
     pub arcsec_per_pixel: f64,
 
     pub saturation_num_electrons: usize,
+
+    // dark current (e/s per pixel), read noise (electrons rms)
+    pub simple_mode: (f64,f64),
+
+    pub gain: f64,
+
+    pub epd_cm:f64,
+
+    pub fuv_exposure_time: f64,
+    pub nuv_exposure_time:f64,
 
 }
 
@@ -84,14 +94,14 @@ impl Default for Config{
             nuv_flatfield_illumination: (Toggle::on, "/Users/mayabasu/Desktop/uvex/vinietting/NUV_vignetting_model_4096.fits".to_string()),
 
             //Generated effects
-            fuv_read_noise: (Toggle::on, "/Users/mayabasu/Desktop/uvex/detector_effects/fuv_read_noise".to_string()),
-            nuv_read_noise: (Toggle::on, "/Users/mayabasu/Desktop/uvex/detector_effects/nuv_read_noise".to_string()),
+            fuv_read_noise: (Toggle::on, Some("/Users/mayabasu/Desktop/uvex/detector_effects/fuv_read_noise".to_string())),
+            nuv_read_noise: (Toggle::on, Some("/Users/mayabasu/Desktop/uvex/detector_effects/nuv_read_noise".to_string())),
 
-            fuv_dark_current: (Toggle::on, "/Users/mayabasu/Desktop/uvex/detector_effects/fuv_dark_current".to_string()),
-            nuv_dark_current: (Toggle::on, "/Users/mayabasu/Desktop/uvex/detector_effects/nuv_dark_current".to_string()),
+            fuv_dark_current: (Toggle::on, Some("/Users/mayabasu/Desktop/uvex/detector_effects/fuv_dark_current".to_string())),
+            nuv_dark_current: (Toggle::on, Some("/Users/mayabasu/Desktop/uvex/detector_effects/nuv_dark_current".to_string())),
 
-            fuv_dead_pixels: (Toggle::on, "/Users/mayabasu/Desktop/uvex/detector_effects/fuv_dead_pixels".to_string()),
-            nuv_dead_pixels: (Toggle::on, "/Users/mayabasu/Desktop/uvex/detector_effects/nuv_dead_pixels".to_string()),
+            fuv_dead_pixels: (Toggle::on, Some("/Users/mayabasu/Desktop/uvex/detector_effects/fuv_dead_pixels".to_string())),
+            nuv_dead_pixels: (Toggle::on, Some("/Users/mayabasu/Desktop/uvex/detector_effects/nuv_dead_pixels".to_string())),
 
             psf_blur: (Toggle::on, "".to_string()),
 
@@ -105,9 +115,23 @@ impl Default for Config{
             y_detectors: 3,
             pixel_size_um: 10.0,
             arcsec_per_pixel: 1.03,
-            saturation_num_electrons: 17000,
+            saturation_num_electrons: 15000,
+            simple_mode: (0.001, 2.),
+            gain: 1.2, //Electrons per ADU, gets rounded down after applying this
+            epd_cm: 75.,
+            fuv_exposure_time: 900.,
+            nuv_exposure_time: 300.,
+
         }
 
+    }
+
+
+
+}
+impl Config{
+    pub fn area_cm(&self)->f64{
+        (self.epd_cm/2.).powi(2)* std::f64::consts::PI
     }
 }
 

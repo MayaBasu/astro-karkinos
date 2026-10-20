@@ -87,18 +87,18 @@ impl PSF {
 
         let data:Vec<f64> = self.data.clone().iter().map(|x|x.to_owned()).flatten().collect();
         let data= data.iter().map(|x| *x).collect();
-        println!("Trying to write to {path}, {:?}",data);
+        //println!("Trying to write to {path}, {:?}",data);
         let mut primary_hdu = Hdu::new(&[128, 128], data);
-        println!("Done making hdu");
+        //println!("Done making hdu");
         let [x,y] = self.center.to_absolute().values();
-        println!("x,y,{x} {y}");
+        //println!("x,y,{x} {y}");
         primary_hdu.insert(center_keys.0,x.to_string().as_str() );
         primary_hdu.insert(center_keys.1,y.to_string().as_str() );
-        println!("printed keys");
+       // println!("printed keys");
         //primary_hdu.insert(size_keys.0, self.size.0);
         //primary_hdu.insert(size_keys.1, self.size.1);
         Fits::create(path, primary_hdu).expect("Failed to create");
-        println!("done??")
+       // println!("done??")
 
 
     }
@@ -326,6 +326,7 @@ impl PsfGrid{
 
 
     pub fn gaussian_blur(&self, blurred_directory:String, std_in_pixels:f64){
+        println!("Saving blurred PSF files to {blurred_directory}");
         let mut new_grid = PsfGrid::new("blurred grid".to_string(), self.grid.clone(), blurred_directory.clone(), self.center_fits_keys.clone());
         let kernel = convolve2d::kernel::gaussian(std_in_pixels.ceil() as usize*10,std_in_pixels);
         let (x,y,vec) = kernel.into_parts();

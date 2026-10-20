@@ -22,6 +22,8 @@ pub mod gridded_data;
 
 pub fn main() {
 
+
+
     let mut config = Config::default();
 
     config.nuv_dead_pixels.0 = off;
@@ -30,24 +32,34 @@ pub fn main() {
     config.nuv_flatfield_illumination.0 = off;
     //println!("{:?}", config);
 
-
 /*
-    let input = make_input(
+
+    let input2 = make_input(
         "/Users/mayabasu/Desktop/catalogs/field.dat",
     "/Users/mayabasu/Desktop/catalogs/parsed");
 
  */
-    let spectrum = GRID1D::new(1000, 100.0, 1000.0, 0.0000001, Grid1DUnits::nm);
-let points = vec![Point::new(-0.5,0.0,&ABSOLUTE_COORDINATES)];
-    let weights = vec![1.];
-    let spec_refs = vec![0];
-    let spectra = vec![Spectrum::new_flat(spectrum,1.0,crate::gridded_data::units::SpectralUnits::f_lambda)];
+
+    
+
+    let norminput = make_input("/Users/mayabasu/Desktop/norm_cat/field.dat",
+                               "/Users/mayabasu/Desktop/norm_cat/parsed");
+
+
+  //  let spectrum = GRID1D::new(1000, 100.0, 1000.0, 0.0000001, Grid1DUnits::nm);
+//let points = vec![Point::new(-0.5,0.0,&ABSOLUTE_COORDINATES)];
+   // let weights = vec![1.];
+   // let spec_refs = vec![0];
+   // let spectra = vec![Spectrum::new_flat(spectrum,1.0,crate::gridded_data::units::SpectralUnits::f_lambda)];
+   /*
     let input = Input{
         points,
         weights,
         spec_refs,
         spectra,
     };
+
+    */
 
 
 
@@ -57,16 +69,6 @@ let points = vec![Point::new(-0.5,0.0,&ABSOLUTE_COORDINATES)];
 
 
 
-    for i in 0..input.points.len(){
-
-        if i %20 == 0{
-            let point:Point = input.points[i];
-            point.plot(&mut plot, "red", "");
-        }
-
-
-
-    }
 
 
 
@@ -81,8 +83,12 @@ let points = vec![Point::new(-0.5,0.0,&ABSOLUTE_COORDINATES)];
 
 
 
-    let background_values = vec![vec![0.,0.],
-                                 vec![0.,0.]];
+    //let background_values = vec![vec![1.1044662,0.5388689],
+    //                             vec![0.29272524,2.0645235]];
+
+    let background_values = vec![vec![1.,1.],
+                                 vec![1.,1.]];
+
     let background_grid = GRID2D::new(
         [2,2],
         [4.,4.],
@@ -94,13 +100,34 @@ let points = vec![Point::new(-0.5,0.0,&ABSOLUTE_COORDINATES)];
 
 
 
-    let mut uvex = UVEX::load(config);
+    let mut uvex = UVEX::load(config.clone());
 
-   // let psf_grid:PsfGrid = uvex.nuv_psfs[0].clone();
-    //psf_grid.gaussian_blur("/Users/mayabasu/Desktop/NUV Out-of-Band-2/300nmblur".to_string(), 20.0);
+    /*
+
+    let psf_grid:PsfGrid = uvex.nuv_psfs[0].clone();
+    psf_grid.gaussian_blur("/Users/mayabasu/Desktop/NUV Out-of-Band-2/300nmblur_100mas".to_string(), 0.1*10./config.clone().arcsec_per_pixel);
+    let psf_grid:PsfGrid = uvex.nuv_psfs[1].clone();
+    psf_grid.gaussian_blur("/Users/mayabasu/Desktop/NUV Out-of-Band-2/400nmblur_100mas".to_string(), 0.1*10./config.clone().arcsec_per_pixel);
+    let psf_grid:PsfGrid = uvex.nuv_psfs[2].clone();
+    psf_grid.gaussian_blur("/Users/mayabasu/Desktop/NUV Out-of-Band-2/500nmblur_100mas".to_string(), 0.1*10./config.clone().arcsec_per_pixel);
+    let psf_grid:PsfGrid = uvex.nuv_psfs[3].clone();
+    psf_grid.gaussian_blur("/Users/mayabasu/Desktop/NUV Out-of-Band-2/700nmblur_100mas".to_string(), 0.1*10./config.clone().arcsec_per_pixel);
+    let psf_grid:PsfGrid = uvex.nuv_psfs[4].clone();
+    psf_grid.gaussian_blur("/Users/mayabasu/Desktop/NUV Out-of-Band-2/1000nmblur_100mas".to_string(), 0.1*10./config.clone().arcsec_per_pixel);
+
+     */
+
+
     //println!("{:?}", uvex.config);
 
-    uvex.run(background, Channel::NUV, input, 10.0);
+    let empty_input = Input{
+        points: vec![],
+        weights: vec![],
+        spec_refs: vec![],
+        spectra: vec![],
+    };
+
+    uvex.run(background, Channel::NUV, norminput);
 
     for detector in uvex.detectors{
         detector.grid.plot_outline_2(&mut plot, "red".to_string(), "det".to_string())

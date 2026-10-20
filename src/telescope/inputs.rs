@@ -121,10 +121,13 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
         Spectrum::new(self.grid,new_data,self.units)
     }
     pub fn integrate(&self)->f64{
+        assert_eq!(self.units, SpectralUnits::f_lambda, "Unimplemented 'integrate' for other units other than photlam");
         let average:f64 = self.data.iter().sum::<f64>()/(self.grid.num_points() as f64);
         //TODO: add in automatic unit conversions
-        println!("WARNING UNIMPLEMENTED");
-        average*self.grid.step_size()
+        //TODO: need to check this
+
+        let conversion  = self.grid.unit().conversion_factor(Grid1DUnits::angstroms);
+        average*self.grid.step_size()*conversion
     }
 
     pub fn sum(&self)->f64{
@@ -155,27 +158,23 @@ pub fn make_input(field_path:&str, spectrum_dir:&str)-> Input{
     println!("Reading inputs: \n\
      Field -> {} \n\
      Spectra -> {}", field_path,spectrum_dir);
-    let arc_seconds_per_deg = 60.*60.;
-    let sky_coords = CoordinateSystem::new(
-        [1./arc_seconds_per_deg, 0.],
-        [0.,1./arc_seconds_per_deg],
-        [-0.56, -0.06],
-    );
+
 
     let (x_list,y_list, weight_list,spec_ref_list) = parse_field_file(field_path);
     let mut counter = 0;
     let mut spectra = Vec::new();
     for i in 0..*spec_ref_list.iter().max().unwrap() + 1 {
+
         let path = format!("{spectrum_dir}/spectra_{i}.dat");
-        //println!("{:?}",path);
+        println!("{:?}",path);
 
         counter += 1;
         let spectrum = Spectrum::load(&path, 0.0001);
         spectra.push(spectrum.unwrap());
     }
-
+    //-0.56, -0.06
     let points:Vec<Point> = x_list.iter().zip(y_list).map(|(&x, y)|{
-        Point::new(x,y,&sky_coords)
+        Point::new(x/(60.*60.)-0.56,y/(60.*60.)-0.06,&ABSOLUTE_COORDINATES)
     }).collect();
 
     Input{
