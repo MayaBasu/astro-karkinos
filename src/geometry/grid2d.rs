@@ -190,6 +190,35 @@ impl GRID2D {
     }
 
 
+
+    pub fn is_point_inside_with_margin(&self, point:&Point,margin:f64)-> bool{
+        let point = &point.transform_to(self.coordinate_system());
+        let half_grid_size = self.size()/2.0;
+        let delta = point - &self.center();
+
+        /*
+        println!(" is point inside?:\n\
+        center was at {:?} \n
+        half grid size {:?} \n\
+
+\n
+        point {:?},
+        \
+        ",self.center(),half_grid_size, point);
+
+         */
+        if (delta.x.value().abs() > (half_grid_size.x + self.snap_precision-margin*self.xy_step_size[0]).value())|
+            (delta.y.value().abs() > (half_grid_size.y + self.snap_precision-margin*self.xy_step_size[1]).value()){
+            // println!("verdict: NO");
+            false
+        }else{
+            //println!("verdict: YES");
+            true
+        }
+
+    }
+
+
     pub fn is_point_inside_cells(&self, point:&Point)-> bool{
         let point = &point.transform_to(self.coordinate_system());
         let half_grid_size = self.size()/2.0;
@@ -295,8 +324,8 @@ impl GRID2D {
         //TODO remove the assumption that the scale is an intege
         //scale is the number of little pixels of the psf that fit into one big Detector pixel
         //x direction
-        let x_pixels = 64; //TODO
-        let y_pixels = 64;
+        let x_pixels = psf[0].len(); //TODO
+        let y_pixels = psf.len();
         let scale = scale as f64;
         let x_tail_end_in_pixels = x_residual * scale + scale / 2.0 - 1.0;
         let y_tail_end_in_pixels = y_residual * scale + scale / 2.0 - 1.0;
@@ -403,20 +432,20 @@ impl GRID2D {
         let mut grid_numbers = Text::new();
         grid_numbers.set_color(&*color)
             .set_fontsize(5.0);
-        println!("ok {:?}",self.num_points());
+       // println!("ok {:?}",self.num_points());
 
 
         grid_points.points_begin();
         for point in 0..self.num_points() {
-            println!("ok");
+           // println!("ok");
             let point_location = self.locate(point).to_absolute();
-            println!(" {:?}",point_location);
+            //println!(" {:?}",point_location);
             grid_points.points_add(point_location.x.value(), point_location.y.value());
             let label = format!("{}", point);
             grid_numbers.draw(point_location.x.value(), point_location.y.value(), label.as_str());
         }
         grid_points.points_end();
-        println!("ok");
+        //println!("ok");
 
 
         corner.points_begin();

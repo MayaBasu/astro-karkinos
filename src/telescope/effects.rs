@@ -9,7 +9,7 @@ use crate::gridded_data::SpectralUnits::f_lambda;
 
 #[derive(Debug,Clone)]
 pub struct SpectralResponse{
-    data: Vec<f64>,
+    pub(crate) data: Vec<f64>,
     grid1d: GRID1D,
     unit: UnitlessUnit,
 }
@@ -155,6 +155,22 @@ impl SpatialEffect{
             grid,
             data,
         })
+    }
+
+    pub fn constant(grid:GRID2D, value:f64)->Result<SpatialEffect,FloatError>{
+        Self::is_data_regular(&vec![vec![value]]);
+        let data: Vec<Vec<f64>> = (0..grid.y_num()).map(|_|{
+            (0..grid.x_num()).map(|_|
+                {value}
+            ).collect()
+        }).collect();
+
+        Ok(SpatialEffect{
+            grid,
+            data,
+        })
+
+
     }
 
     fn combine_2_add(&self, effect:&SpatialEffect) ->SpatialEffect {

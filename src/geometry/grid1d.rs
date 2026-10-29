@@ -4,6 +4,7 @@ use std::fmt::{Display, Formatter};
 use crate::geometry::geometry::*;
 use plotpy::{Curve, Plot, Text};
 use rand::RngExt;
+use crate::geometry::Grid1DUnits::nm;
 use crate::gridded_data::UnitError;
 use crate::geometry::GriddingError;
 use crate::gridded_data::Unit;
@@ -85,9 +86,20 @@ pub enum Grid1DUnits {
     angstroms,
     um,
 }
+
+pub const SPECTRAL_GRID:GRID1D = GRID1D{
+    units: Grid1DUnits::nm,
+    step_size: Regular{value:0.9},
+    num_steps: 1000,
+    minimum_value: Regular{value:100.},
+    maximum_value: Regular{value:1000.},
+    snap_precision: Regular{value:0.0001},
+};
+
+
 impl Grid1DUnits{
     pub fn to_nm(&self)->f64{
-        // "one 'self' is how many nm?"
+        // what to multiply self to get to a value in nm
         match self{
             Grid1DUnits::nm => {1.0}
             Grid1DUnits::angstroms => {0.1}
@@ -95,6 +107,38 @@ impl Grid1DUnits{
         }
 
     }
+
+    pub fn to_angstrom(&self)->f64{
+        // what to multiply self to get to a value in angstroms
+        match self{
+            Grid1DUnits::nm => {10.}
+            Grid1DUnits::angstroms => {1.0}
+            Grid1DUnits::um => {10000.}
+        }
+
+    }
+
+
+    pub fn to_um(&self)->f64{
+        // what to multiply self to get to a value in um
+        match self{
+            Grid1DUnits::nm => {0.001}
+            Grid1DUnits::angstroms => {0.0001}
+            Grid1DUnits::um => {1.}
+        }
+
+    }
+
+    pub fn conversion_factor(&self, other:Self)->f64{
+        //what to multiply self by to get other
+        match other{
+            nm => {Self::to_nm(self) }
+            Grid1DUnits::angstroms => {Self::to_angstrom(self)}
+            Grid1DUnits::um => {Self::to_um(self)}
+        }
+    }
+
+    /*
     pub fn conversion_factor(&self, other:Self) -> f64{
         let other_in_nm = other.to_nm();
         //One nm is how many other
@@ -105,6 +149,8 @@ impl Grid1DUnits{
         };
         other_in_nm*factor
     }
+
+     */
 }
 impl Unit for Grid1DUnits{
     fn from_str(str: &str) -> Result<Self, UnitError> {
@@ -248,7 +294,7 @@ impl GRID1D {
     }
 
     pub fn locate_regular(&self, value:Regular, unit: Grid1DUnits) -> Location{
-        let conversion_factor = self.units.conversion_factor(unit);
+        let conversion_factor = unit.conversion_factor(self.units);
         //println!("CONVERSION FACTOR IS {:?} {:?}., {:?}", self.minimum_value,conversion_factor, value);
         //conversion factor from other to self
         let value = value*conversion_factor;
@@ -282,6 +328,8 @@ impl GRID1D {
         )
 
     }
+
+
 
     pub fn locate(&self, value:f64, unit: Grid1DUnits) -> Location{
         self.locate_regular(Regular::try_from(value),unit)

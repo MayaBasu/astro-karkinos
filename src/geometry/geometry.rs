@@ -14,7 +14,8 @@ pub enum FloatError{
 pub const NUMERICAL_PRECISION:f64 = 0.00000000001;
 
 #[derive(Clone, Debug, Copy, Serialize, Deserialize,PartialOrd)]
-pub struct Regular{value: f64}
+pub struct Regular{
+    pub(crate) value: f64}
 impl Regular{
     pub fn check(float:f64)->bool{
         if float.is_nan(){
@@ -29,7 +30,7 @@ impl Regular{
     pub fn abs(&self)->Regular{
         Regular{value:self.value.abs()}
     }
-    pub fn try_from(float:f64) -> Regular{
+    pub const fn try_from(float:f64) -> Regular{
         assert!(!float.is_nan(), "Tried to convert float to NonNanfinite type, but float is NaN");
         assert!(float.is_finite(), "Tried to convert float to NonNaNfinite type, but float is infinite");
         Regular{value:float}

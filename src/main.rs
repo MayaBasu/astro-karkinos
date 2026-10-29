@@ -2,14 +2,16 @@
 use clap::Parser;
 use egui::CursorIcon::Default;
 use plotpy::Plot;
-use crate::geometry::{Grid1DUnits, Regular};
+use crate::gridded_data::SpectralUnits;
+use crate::geometry::{Grid1DUnits, Regular, SPECTRAL_GRID};
 use crate::telescope::{make_input, Detector, Input, PsfGrid, SpatialEffect, SpectralResponse, Spectrum};
 use crate::geometry::{generate_notebook, CoordinateSystem, Point, ABSOLUTE_COORDINATES, GRID1D, GRID2D};
-use crate::geometry::Grid1DUnits::nm;
+use crate::geometry::Grid1DUnits::{angstroms, nm, um};
 use crate::gridded_data::{DATA1D, DATA2D};
 use crate::gridded_data::DetectorUnits::{AverageElectrons, Electrons};
 use crate::uvex::config::Config;
 use crate::uvex::config::Toggle::off;
+use crate::uvex::psf_bin_test;
 use crate::uvex::uvex::{Channel, UVEX};
 
 pub mod geometry;
@@ -22,72 +24,67 @@ pub mod gridded_data;
 
 pub fn main() {
 
+    let x = 1.;
+    println!("{:?} in um",x);
+    println!("{:?} in um",x*um.to_um());
+    println!("{:?} in a",x*um.to_angstrom());
+    println!("{:?} in nm",x*um.to_nm());
 
+    println!("{:?} in um",x*um.to_angstrom()*angstroms.to_um());
+    println!("{:?} in um",x*um.to_nm()*nm.to_um());
+    println!("{:?} in um",x*nm.to_angstrom()*angstroms.to_nm());
+    println!("{:?}",nm.conversion_factor(angstroms));
+    println!("{:?}",nm.conversion_factor(um));
+    println!("{:?}",um.conversion_factor(nm));
+    println!("{:?}",um.conversion_factor(angstroms));
+    println!("{:?}",angstroms.conversion_factor(um));
+    println!("{:?}",angstroms.conversion_factor(nm));
+
+
+
+
+
+    let config = Config::default();
+    let mut uvex = UVEX::load(config.clone());
+
+    let spectrum = Spectrum::load("/Users/mayabasu/Desktop/onestar/flat.dat", 0.0001).unwrap();
+    let spectrum = spectrum.regrid(&SPECTRAL_GRID);
+    let small = GRID1D::new(1000,100.,1000.,0.0001,nm);
+
+    println!("spectruma after: {:?}", spectrum.apply_spectral_response(&uvex.nuv).regrid(&small));
+
+    println!("COUNTRATE: {:?}",spectrum.countrate(&uvex.nuv.regrid(&SPECTRAL_GRID)))
+
+
+
+
+
+
+
+    //psf_bin_test::test();
+
+    /*
 
     let mut config = Config::default();
-
     config.nuv_dead_pixels.0 = off;
     config.nuv_dark_current.0 = off;
     config.nuv_read_noise.0 = off;
     config.nuv_flatfield_illumination.0 = off;
-    //println!("{:?}", config);
-
-/*
-
-    let input2 = make_input(
-        "/Users/mayabasu/Desktop/catalogs/field.dat",
-    "/Users/mayabasu/Desktop/catalogs/parsed");
-
- */
-
-    
-
-    let norminput = make_input("/Users/mayabasu/Desktop/norm_cat/field.dat",
-                               "/Users/mayabasu/Desktop/norm_cat/parsed");
-
-
-  //  let spectrum = GRID1D::new(1000, 100.0, 1000.0, 0.0000001, Grid1DUnits::nm);
-//let points = vec![Point::new(-0.5,0.0,&ABSOLUTE_COORDINATES)];
-   // let weights = vec![1.];
-   // let spec_refs = vec![0];
-   // let spectra = vec![Spectrum::new_flat(spectrum,1.0,crate::gridded_data::units::SpectralUnits::f_lambda)];
-   /*
-    let input = Input{
-        points,
-        weights,
-        spec_refs,
-        spectra,
-    };
-
-    */
-
-
-
-
+    let norminput = make_input("/Users/mayabasu/Desktop/testcat/field.dat",
+                               "/Users/mayabasu/Desktop/testcat/parsed");
     let mut plot = Plot::new();
 
 
+    let mut uvex = UVEX::load(config.clone());
+    let spec0 = Spectrum::load("/Users/mayabasu/Desktop/testcat/zodiac2.dat",0.0001);
+    let spec1 = Spectrum::load("/Users/mayabasu/Desktop/testcat/galactic2.dat",0.0001);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    //let background_values = vec![vec![1.1044662,0.5388689],
-    //                             vec![0.29272524,2.0645235]];
-
-    let background_values = vec![vec![1.,1.],
-                                 vec![1.,1.]];
+    println!("making background");
+    let background = uvex.make_nuv_background([vec![1.0275712,0.53212076],
+        vec![1.0267771,0.4238424],
+        vec![0.97468865,2.0321445],
+        vec![0.9709286,1.0121843]], vec![spec0.unwrap(),spec1.unwrap()]);
+    println!("BACKGROUND DATA = {:?}", background);
 
     let background_grid = GRID2D::new(
         [2,2],
@@ -96,11 +93,12 @@ pub fn main() {
         0.000000000001,
         ABSOLUTE_COORDINATES);
 
-    let background = SpatialEffect::new(background_grid, background_values).unwrap();
 
+    let background = SpatialEffect::constant(background_grid,0.).unwrap();
 
+    let one_star_input = make_input("/Users/mayabasu/Desktop/onestar/field.dat",
+    "/Users/mayabasu/Desktop/onestar/parsed");
 
-    let mut uvex = UVEX::load(config.clone());
 
     /*
 
@@ -118,107 +116,14 @@ pub fn main() {
      */
 
 
-    //println!("{:?}", uvex.config);
 
-    let empty_input = Input{
-        points: vec![],
-        weights: vec![],
-        spec_refs: vec![],
-        spectra: vec![],
-    };
-
-    uvex.run(background, Channel::NUV, norminput);
-
+    uvex.run(background, Channel::NUV, one_star_input);
     for detector in uvex.detectors{
         detector.grid.plot_outline_2(&mut plot, "red".to_string(), "det".to_string())
     }
     plot.show("sekjhfsef").unwrap();
 
-
-
-    //let mut plot = Plot::new();
-
-
-
-
-
-
-
-
-
-    /*
-
-    let grid1 = GRID2D::new(
-    [2,2],
-    [1.,1.],
-    Point::zero(&ABSOLUTE_COORDINATES),
-    0.000001,
-    ABSOLUTE_COORDINATES,
-    );
-
-    let data_1 = vec![vec![1.,2.],vec![1.,2.]];
-    let data_grid_1 = SpatialEffect::new(grid1, data_1).unwrap();
-    println!("{:?}", data_grid_1.data());
-
-    let grid2 = GRID2D::new(
-        [3,3],
-        [0.5,0.5],
-        Point::zero(&ABSOLUTE_COORDINATES),
-        0.000001,
-        ABSOLUTE_COORDINATES,
-    );
-
-    let regridded = data_grid_1.re_grid_values(grid2);
-    println!("{:?}", regridded);
-
      */
-
-
-
-    /*
-
-
-   // config.fuv_dead_pixels.0 = off;
-   // config.fuv_dark_current.0 = off;
-   // config.fuv_read_noise.0 = off;
-
-   let mut config = Config::default();
-
-    let mut uvex = UVEX::load(config);
-
-
-    let background_values = vec![vec![1.,1.],
-                    vec![1.,1.]];
-    let background_grid = GRID2D::new(
-        [2,2],
-        [4.,4.],
-        Point::new(-0.56, -0.06, &ABSOLUTE_COORDINATES),
-        0.000000000001,
-        ABSOLUTE_COORDINATES);
-
-    let background = SpatialEffect::new(background_grid, background_values).unwrap();
-
-    
-
-
-    uvex.run(background, Channel::FUV, vec![], 10.0);
-
-
-    let mut plot = Plot::new();
-
-    uvex.detector_layout.plot(&mut plot, "green", "layout");
-    background_grid.plot(&mut plot, "purple", "background_grid");
-    UVEX::psf_grid().plot(&mut plot, "red", "grid");
-    for detector in uvex.detectors{
-        detector.grid.plot_outline_2(&mut plot, "orange".to_string(), "detector".to_string())
-    }
-    plot.show("hiekd").unwrap();
-
-     */
-
-
-
-
 
 
 

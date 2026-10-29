@@ -16,7 +16,7 @@ pub const c_CGS:f64 = 2.997925 *10e10; // cm s−1
 
 #[derive(Clone, Debug)]
 pub struct Spectrum{
-    data: Vec<f64>,
+    pub(crate) data: Vec<f64>,
     grid: GRID1D,
     units: crate::gridded_data::units::SpectralUnits
 }
@@ -112,22 +112,29 @@ impl Spectrum{ //https://vitaly.neustroev.net/useful-info/conversions/
         Spectrum::new(grid,data,F_lambda)
 
     }
-    pub fn apply_spectral_response(self, spectral_response:&mut SpectralResponse)->Self {
-        let spectral_response = spectral_response.regrid(&self.grid);
-        assert_eq!(*spectral_response.grid(),self.grid,"Unreachable: Re-grid attempt failed");
-        let new_data = self.data.into_iter().enumerate().map(|(i,x)|{
+
+
+    pub fn countrate(&self, bandpass: &SpectralResponse) -> f64{
+        //Returns in counts per second
+        self.apply_spectral_response(bandpass).integrate()
+    }
+    pub fn apply_spectral_response(&self, spectral_response:&SpectralResponse)->Self {
+        assert_eq!(*spectral_response.grid(),self.grid,"Must regrid before applying spectral response");
+        let new_data = self.data.iter().enumerate().map(|(i,x)|{
             x*spectral_response.data()[i]
         }).collect();
         Spectrum::new(self.grid,new_data,self.units)
     }
     pub fn integrate(&self)->f64{
         assert_eq!(self.units, SpectralUnits::f_lambda, "Unimplemented 'integrate' for other units other than photlam");
-        let average:f64 = self.data.iter().sum::<f64>()/(self.grid.num_points() as f64);
+        let sum:f64 = self.data.iter().sum::<f64>();
+       // println!("AVERAGE IS {:?}",average);
         //TODO: add in automatic unit conversions
         //TODO: need to check this
 
         let conversion  = self.grid.unit().conversion_factor(Grid1DUnits::angstroms);
-        average*self.grid.step_size()*conversion
+        //println!("conversion is {:?} step size {:?}", conversion, self.grid.step_size());
+        sum*self.grid.step_size()*conversion
     }
 
     pub fn sum(&self)->f64{
@@ -235,7 +242,7 @@ pub fn parse_field_file(path:&str)-> (Vec<f64>,Vec<f64>, Vec<f64>, Vec<usize>){
         }
         else{unreachable!()}
     };
-    assert!(lines_read > 1);
+    assert!(lines_read >= 1);
     (x_list,y_list, weight_list,spec_ref_list)
 }
 

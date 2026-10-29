@@ -60,9 +60,16 @@ impl Detector {
     }
 
     pub fn fast_add_multi(&mut self,center:&Point, psf_datas:&Vec<Vec<Vec<f64>>>,bands:&Vec<f64>,scale:f64){
+
+
+
         let binned_psfs:Vec<((usize,usize),Vec<Vec<f64>>)> = psf_datas.into_iter().map(|data|{
-            //TODO scale is fixed
-            self.grid.bin_up_patch(center, &data, 10)
+            //TODO scale is fixed, also center should depend on pixel to arc sec scale
+            let x_num  = data[0].len();
+            let y_num =  data.len();
+            let psf_half = &Point::new(1./(60.*60.)*x_num as f64/(10 as f64 *2.),1./(60.*60.)*y_num as f64/(10 as f64 * 2.),&ABSOLUTE_COORDINATES);
+
+            self.grid.bin_up_patch(&(center-psf_half), &data, 10)
 
         }).collect();
 
@@ -77,7 +84,7 @@ impl Detector {
 
                 if column + y_mod < self.grid.x_num() && row + x_mod < self.grid.y_num() {
                     let mut flux = 0.0;
-                    for psf in 0..binned_psfs.len(){
+                    for psf in 0..1{//TODO: binned_psfs.len()
                         flux += (binned_psfs[psf].1[column][row] as f64)*bands[psf]*scale
                     }
                     if (flux == 0.0) {
@@ -135,20 +142,32 @@ impl Detector {
     }
 
 
-    pub fn to_electrons(&mut self, read_noise: f64, dark_current: f64, exposure_time:f64, saturation:f64,gain:f64){
+
+    pub fn to_electrons(&mut self, dark_current: f64, read_noise: f64, exposure_time:f64, saturation:f64,gain:f64){
         assert_eq!(self.unit, DetectorUnits::AverageElectrons);
         let mut rng = rand::rng();
         let read_noise = Poisson::new(read_noise).unwrap();
         for y in 0..self.grid.y_num(){
             for x in 0..self.grid.x_num(){
+                //println!("Data is {:?}, {:?}",self.data[y][x] ,dark_current);
 
                 let expected_source_electrons = (self.data[y][x] + dark_current)*exposure_time;
                 //total_source = total 'expected' electrons from background and point sources
                 let generator = Poisson::new(expected_source_electrons).unwrap();
+
                 let poisson_source_electrons= generator.sample(&mut rng);
-                let saturated_source_electrons = poisson_source_electrons.min(saturation);
+
+               // println!("sampled to {:?}",poisson_source_electrons);
+                let saturated_source_electrons = if  poisson_source_electrons > saturation{
+                    saturation
+                }else{
+                    poisson_source_electrons
+                };
+
+                //println!("saturated to {:?}",saturated_source_electrons);
                 let final_electrons = saturated_source_electrons + read_noise.sample(&mut rng);
-                self.data[y][x] += (final_electrons*gain).floor();
+               // println!("final value is {:?}",final_electrons);
+                self.data[y][x] = (final_electrons/gain).floor();
 
             }
         }

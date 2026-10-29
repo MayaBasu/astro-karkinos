@@ -3,7 +3,7 @@ use egui::Grid;
 use rayon::iter::ParallelIterator;
 use rayon::iter::IntoParallelIterator;
 use crate::gridded_data::units::DetectorUnits;
-use crate::geometry::{CoordinateSystem, Point, ABSOLUTE_COORDINATES, GRID1D, GRID2D};
+use crate::geometry::{CoordinateSystem, Point, ABSOLUTE_COORDINATES, GRID1D, GRID2D, SPECTRAL_GRID};
 use crate::geometry::Grid1DUnits::nm;
 use crate::gridded_data::{DATA1D, DATA2D};
 use crate::gridded_data::DetectorUnits::Electrons;
@@ -26,7 +26,7 @@ pub struct UVEX{
     pub nuv_filter: SpectralResponse,
     pub fuv_filter: SpectralResponse,
 
-    pub nuv_qe: SpectralResponse,
+   // pub nuv_qe: SpectralResponse,
 
     pub nuv_contamination: SpectralResponse,
     pub fuv_contamination: SpectralResponse,
@@ -86,10 +86,15 @@ impl UVEX{
             snap_precision
         ).unwrap();
 
+
+        /*
+
         let nuv_qe = SpectralResponse::load(
             &config.nuv_qe.1,
             snap_precision
         ).unwrap();
+
+         */
 
         let fuv_contamination = SpectralResponse::load(
             &config.fuv_contamination.1,
@@ -105,15 +110,17 @@ impl UVEX{
             .multiply(&mirror_response)
             .multiply(&dichroic_reflection)
             .multiply(&fuv_filter)
-            .multiply(&fuv_contamination);
+            .multiply(&fuv_contamination)
+            .regrid(&SPECTRAL_GRID);
 
         let nuv = mirror_response.clone()
             .multiply(&mirror_response)
             .multiply(&mirror_response)
             .multiply(&dichroic_transmission)
             .multiply(&nuv_filter)
-            .multiply(&nuv_qe)
-            .multiply(&nuv_contamination);
+            //.multiply(&nuv_qe)
+            .multiply(&nuv_contamination)
+            .regrid(&SPECTRAL_GRID);
 
 
         let psf_grid = UVEX::psf_grid();
@@ -124,7 +131,7 @@ impl UVEX{
             psf_grid,
             config.fuv_psf_directory.clone(),
             ("XFLD".to_string(), "YFLD".to_string()));
-        fuv_psf.load_data_frames(64,64);
+        fuv_psf.load_data_frames();
         let mut nuv_psfs = Vec::new();
 
         for path in config.nuv_psf_directories.clone(){
@@ -133,7 +140,7 @@ impl UVEX{
                 psf_grid,
                 path.clone(),
                 ("XFLD".to_string(), "YFLD".to_string()));
-            psfs.load_data_frames(128,128);
+            psfs.load_data_frames();
             nuv_psfs.push(psfs)
 
         }
@@ -184,7 +191,7 @@ impl UVEX{
             dichroic_reflection,
             nuv_filter,
             fuv_filter,
-            nuv_qe,
+            //nuv_qe,
             nuv_contamination,
             fuv_contamination,
             fuv,
@@ -350,10 +357,38 @@ impl UVEX{
             ABSOLUTE_COORDINATES)
     }
 
+    pub fn make_nuv_background(&mut self, corners:[Vec<f64>;4], spectra:Vec<Spectrum>)-> SpatialEffect{
+       // println!("Spectrum 1 is {:?}", spectra[0]);
+        //println!("Spectrum 2 is {:?}", spectra[1]);
+        //println!("NUV: {:?}",self.nuv);
+        let nuv_bands:Vec<f64> = spectra.into_iter().map(|spectrum|{
+            spectrum.apply_spectral_response(&mut self.nuv).integrate()
+        }).collect();
+        println!("NUV BANDS ARE {:?}", nuv_bands);
+        let scaled_corners:Vec<f64> = corners.into_iter().map(|set|{
+            set.into_iter().zip(nuv_bands.clone()).map(|(unscaled_corner,band)|{
+                unscaled_corner*band
+            }).sum::<f64>()
+        }).collect();
+
+        let scaled_corners:Vec<Vec<f64>> = scaled_corners.chunks(2).map(|c|c.to_vec()).collect();
+
+        //TODO add this to config instead
+
+        let background_grid = GRID2D::new(
+            [2,2],
+            [4.,4.],
+            Point::new(-0.56, -0.06, &ABSOLUTE_COORDINATES),
+            0.000000000001,
+            ABSOLUTE_COORDINATES);
+
+        SpatialEffect::new(background_grid,scaled_corners).unwrap()
+
+    }
+
 
     pub fn run(&mut self, mut background:SpatialEffect, channel:Channel, input: Input) {
         let now = std::time::Instant::now();
-        let grid = GRID1D::new(1000,100.,1000.,0.0001,nm);
 
 
         let mut polychromatic_bandpasses_nuv = (0..self.nuv_bands.len()-1).map(|i|{
@@ -361,7 +396,7 @@ impl UVEX{
             let upper = self.nuv_bands[i+1];
             let directory = self.config.nuv_psf_directories[i].clone();
             println!("Bin {i}: {lower} - {upper} nm -> {directory}");
-            SpectralResponse::square_wave(grid,lower,upper)
+            SpectralResponse::square_wave(SPECTRAL_GRID,lower,upper)
         }).collect::<Vec<SpectralResponse>>();
 
 
@@ -372,17 +407,20 @@ impl UVEX{
                 //after integrating, units are photons/(s*cm^2)
                 binned.integrate()*self.config.area_cm()
             }).collect();
+            //println!("BANDS ARE {:?}", bands);
             bands
         }).collect();
 
 
 
-        let background_spectrum:Spectrum = input.spectra[0].clone();
-        let background_bandpass = match channel{
-            Channel::FUV => {background_spectrum.apply_spectral_response(&mut self.fuv).integrate()}
-            Channel::NUV => {background_spectrum.apply_spectral_response(&mut self.nuv).integrate()}
-        };
-        background.scale(self.config.area_cm()* background_bandpass);
+
+       // let background_spectrum:Spectrum = input.spectra[1].clone();
+       // let background_bandpass = match channel{
+       //     Channel::FUV => {background_spectrum.apply_spectral_response(&mut self.fuv).integrate()}
+       //     Channel::NUV => {background_spectrum.apply_spectral_response(&mut self.nuv).integrate()}
+       // };
+        background.scale(self.config.area_cm());
+        println!("area {:?}",self.config.area_cm());
         println!("BACKGROUND {:?}", background.value_at_index(0));
         println!("{:?} point sources with {:?} distinct spectra", input.points.len(), input.spectra.len());
         let start = Instant::now();
@@ -403,11 +441,17 @@ impl UVEX{
                     println!("Done {source_number} sources for detector number {i}");
                 }
                 let point:&Point = &input.points[source_number];
+                //println!("PSF GRID FITING: {:?}", self.nuv_psfs[0].grid.fit_grid(point,true));
+                //println!("{:?}", self.nuv_psfs[0].grid.grid_number(9,9));
+               // let center_of_the_corner_pixel = point-&psf_half;
                 let spectra_ref = input.spec_refs[source_number];
                 let bands = &banded_spectra[spectra_ref];
                 let scale = input.weights[source_number];
 
-                match detector_grid.is_point_inside(point) {
+
+
+
+                match detector_grid.is_point_inside_with_margin(&point,13.) { //TODO was center
                     true => {
                        // println!("DIDNT DROP POINT");
                         match channel{
@@ -428,7 +472,7 @@ impl UVEX{
                                     }).collect();
 
                                 //TODO: ADD SCALE
-                                detector.fast_add_multi(point,&psf_datas, bands, scale)
+                                detector.fast_add_multi(&point,&psf_datas, bands, scale)
                             }
                         }
 
@@ -498,7 +542,7 @@ impl UVEX{
                                           self.config.gain);
 
 
-                    detector.write_to_fits(&format!("/Users/mayabasu/Desktop/Output/persei_detector_{i}.fits"))
+                    detector.write_to_fits(&format!("/Users/mayabasu/Desktop/Output/one_star_{i}.fits"))
 
 
                     /*

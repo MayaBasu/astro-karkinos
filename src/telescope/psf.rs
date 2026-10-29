@@ -45,7 +45,7 @@ impl PSF {
     pub fn scale(mut self, scalar:f64){
         //self.data = self.data.into_iter().flatten().map(|x|x*scalar).collect().chunk()
     }
-    pub fn load_file(file: PathBuf, center:(Load, Load), size:(Load, Load), x_num:usize, y_num:usize) -> PSF {
+    pub fn load_file(file: PathBuf, center:(Load, Load), size:(Load, Load)) -> PSF {
        // println!("Loading {:?} into a DataFrame ",file);
         let fits = Fits::open(file.clone()).expect("Failed to open FITS file");
         let primary_hdu= fits.iter().next().expect("Couldn't find primary HDU");
@@ -59,8 +59,8 @@ impl PSF {
         let data:Vec<f64> = data.iter().map(|x|x/normalization).collect();
         //println!("PSF has been normalized to {:?}",data.iter().sum::<f64>());
 
-        assert_eq!(shape[0], x_num,"Diva down! Tried to load a file with data of the wrong x size"); //check that the data is the expected size
-        assert_eq!(shape[1], y_num,"Diva down! Tried to load a file with data of the wrong y size");
+       // assert_eq!(shape[0], x_num,"Diva down! Tried to load a file with data of the wrong x size"); //check that the data is the expected size
+       // assert_eq!(shape[1], y_num,"Diva down! Tried to load a file with data of the wrong y size");
         //TODO is this [x,y] or [y,x]
 
         let center_x:f64 = PSF::load(center.0, &primary_hdu);
@@ -69,13 +69,13 @@ impl PSF {
         let size_x:f64 = PSF::load(size.0, &primary_hdu);
         let size_y:f64 = PSF::load(size.1, &primary_hdu);
        // println!("loaded size");
-        let data = data.chunks(x_num).map(|i| i.to_vec()).collect();
+        let data = data.chunks(shape[0]).map(|i| i.to_vec()).collect();
       //  println!("{:?}",data);
         PSF {
             path: file,
             data,
-            x_pixels: x_num,
-            y_pixels: y_num,
+            x_pixels: shape[0],
+            y_pixels: shape[1],
             center: Point::new(center_x,center_y,&ABSOLUTE_COORDINATES),
             size: (size_x,size_y),
         }
@@ -171,7 +171,7 @@ impl PsfGrid{
             center_fits_keys,
         }
     }
-    pub fn load_data_frames(&mut self, x_num:usize,y_num:usize){
+    pub fn load_data_frames(&mut self){
 
 
 
@@ -194,8 +194,7 @@ impl PsfGrid{
             let frame = PSF::load_file(
                 path.clone(),
                 (Load::FromKey(self.center_fits_keys.0.to_string()), Load::FromKey(self.center_fits_keys.1.to_string())),
-                (Load::FromValue(self.grid.x_size()),Load::FromValue(self.grid.y_size())),
-                x_num,y_num,
+                (Load::FromValue(self.grid.x_size()),Load::FromValue(self.grid.y_size()))
             );
 
             let frame_index = frame.snap_to_grid(&self.grid).expect(
