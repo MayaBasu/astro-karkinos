@@ -173,7 +173,7 @@ pub fn make_input(field_path:&str, spectrum_dir:&str)-> Input{
     for i in 0..*spec_ref_list.iter().max().unwrap() + 1 {
 
         let path = format!("{spectrum_dir}/spectra_{i}.dat");
-        println!("{:?}",path);
+        //println!("{:?}",path);
 
         counter += 1;
         let spectrum = Spectrum::load(&path, 0.0001);

@@ -10,7 +10,7 @@ use crate::geometry::Grid1DUnits::{angstroms, nm, um};
 use crate::gridded_data::{DATA1D, DATA2D};
 use crate::gridded_data::DetectorUnits::{AverageElectrons, Electrons};
 use crate::uvex::config::Config;
-use crate::uvex::config::Toggle::off;
+use crate::uvex::config::Toggle::{off, on};
 use crate::uvex::psf_bin_test;
 use crate::uvex::uvex::{Channel, UVEX};
 
@@ -23,6 +23,12 @@ pub mod gridded_data;
 
 
 pub fn main() {
+
+
+
+
+
+/*
 
     let x = 1.;
     println!("{:?} in um",x);
@@ -44,7 +50,8 @@ pub fn main() {
 
 
 
-    let config = Config::default();
+    let mut config = Config::default();
+    config.nuv_flatfield_illumination.0 = off;
     let mut uvex = UVEX::load(config.clone());
 
     let spectrum = Spectrum::load("/Users/mayabasu/Desktop/onestar/flat.dat", 0.0001).unwrap();
@@ -52,8 +59,13 @@ pub fn main() {
     let small = GRID1D::new(1000,100.,1000.,0.0001,nm);
 
     println!("spectruma after: {:?}", spectrum.apply_spectral_response(&uvex.nuv).regrid(&small));
+    let cr = spectrum.countrate(&uvex.nuv.regrid(&SPECTRAL_GRID));
+    println!("COUNTRATE: {:?}",cr);
+    println!("COUNTRATE: {:?}",cr*config.area_cm()*300.*0.7557460729579156);
 
-    println!("COUNTRATE: {:?}",spectrum.countrate(&uvex.nuv.regrid(&SPECTRAL_GRID)))
+ */
+
+
 
 
 
@@ -63,15 +75,16 @@ pub fn main() {
 
     //psf_bin_test::test();
 
-    /*
+
 
     let mut config = Config::default();
     config.nuv_dead_pixels.0 = off;
     config.nuv_dark_current.0 = off;
     config.nuv_read_noise.0 = off;
-    config.nuv_flatfield_illumination.0 = off;
-    let norminput = make_input("/Users/mayabasu/Desktop/testcat/field.dat",
-                               "/Users/mayabasu/Desktop/testcat/parsed");
+    config.nuv_flatfield_illumination.0 = on;
+
+    //let norminput = make_input("/Users/mayabasu/Desktop/testcat/field.dat",
+    //                           "/Users/mayabasu/Desktop/onestar/flat.dat");
     let mut plot = Plot::new();
 
 
@@ -96,8 +109,20 @@ pub fn main() {
 
     let background = SpatialEffect::constant(background_grid,0.).unwrap();
 
-    let one_star_input = make_input("/Users/mayabasu/Desktop/onestar/field.dat",
-    "/Users/mayabasu/Desktop/onestar/parsed");
+
+    let spectrum = Spectrum::load("/Users/mayabasu/Desktop/onestar/flat.dat", 0.0001).unwrap();
+    let spectrum = spectrum.regrid(&SPECTRAL_GRID);
+
+
+    let onestarinput = Input{
+        points: vec![Point::new(-0.56, -0.06, &ABSOLUTE_COORDINATES)],
+        weights: vec![1.0],
+        spec_refs: vec![0],
+        spectra: vec![spectrum],
+    };
+
+   // let one_star_input = make_input("/Users/mayabasu/Desktop/onestar/field.dat",
+   // "/Users/mayabasu/Desktop/onestar/parsed");
 
 
     /*
@@ -117,13 +142,15 @@ pub fn main() {
 
 
 
-    uvex.run(background, Channel::NUV, one_star_input);
+    uvex.run(background, Channel::NUV, onestarinput);
     for detector in uvex.detectors{
         detector.grid.plot_outline_2(&mut plot, "red".to_string(), "det".to_string())
     }
     plot.show("sekjhfsef").unwrap();
 
-     */
+
+
+
 
 
 

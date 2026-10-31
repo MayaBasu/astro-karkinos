@@ -36,8 +36,11 @@ pub trait DATA1D<Unit:super::units::Unit>{
     fn load(path: &str,snap_precision:f64) -> Result<Self,FileParsingError> where Self: Sized {
         match Self::load_data(path){
             Ok(((grid_unit,grid_data),(unit,data))) => {
+
                 let grid = grid1d::GRID1D::from_values(grid_data,snap_precision,grid_unit);
-                Ok(Self::new(grid, data, unit))
+                let data_grid = Self::new(grid, data, unit);
+                let standard_data_grid = data_grid.regrid(&SPECTRAL_GRID);
+                Ok(standard_data_grid)
             }
             Err(e) => {Err(e)}
         }

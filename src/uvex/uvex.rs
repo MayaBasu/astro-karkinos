@@ -145,6 +145,15 @@ impl UVEX{
 
         }
 
+        let mut nuv_plain_psfs = PsfGrid::new(
+            "in band 100 mas".to_string(),
+            psf_grid,
+            "/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),
+            ("XFLD".to_string(), "YFLD".to_string()));
+        nuv_plain_psfs.load_data_frames();
+        nuv_plain_psfs.gaussian_blur("/Users/mayabasu/Desktop/uvex/NUV_PSF_100mas".to_string(),1.);
+
+
 
         //TODO vinietting size not exactly known
 
@@ -398,6 +407,10 @@ impl UVEX{
             println!("Bin {i}: {lower} - {upper} nm -> {directory}");
             SpectralResponse::square_wave(SPECTRAL_GRID,lower,upper)
         }).collect::<Vec<SpectralResponse>>();
+        println!("Calculating total input counts:");
+        let count = input.spectra[0].clone().apply_spectral_response(&self.nuv).integrate();
+        println!("total COunts: {:?}", count*self.config.area_cm()*300.);
+        println!("COunts w/ gain : {:?}", count*self.config.area_cm()*300./1.2);
 
 
         let banded_spectra:Vec<Vec<f64>> = input.spectra.clone().into_iter().map(|spectrum: Spectrum|{
@@ -405,7 +418,9 @@ impl UVEX{
             let bands:Vec<f64> = polychromatic_bandpasses_nuv.iter_mut().enumerate().map(|(i,bin)|{
                 let mut binned:Spectrum = spectra.clone().apply_spectral_response(bin); //photons/(s*cm^2*A)
                 //after integrating, units are photons/(s*cm^2)
-                binned.integrate()*self.config.area_cm()
+                let count_rate = binned.integrate()*self.config.area_cm();
+                println!("COunts: {:?}", count_rate*300.);
+                count_rate
             }).collect();
             //println!("BANDS ARE {:?}", bands);
             bands
@@ -468,7 +483,10 @@ impl UVEX{
                                 let psf_datas:Vec<Vec<Vec<f64>>> = self.nuv_psfs
                                     .iter()
                                     .map(|(NUV_PSF_grid)|{
-                                        NUV_PSF_grid.interpolated_psf(point)
+                                        let psf = NUV_PSF_grid.interpolated_psf(point);
+                                        println!("PSF norm: {:?}",psf.iter().flatten().sum::<f64>());
+                                        psf
+
                                     }).collect();
 
                                 //TODO: ADD SCALE
@@ -531,11 +549,12 @@ impl UVEX{
 
                     match self.config.nuv_flatfield_illumination.0{
                         Toggle::on => {
-                            detector.multiply_effect2(&self.nuv_vinietting)
+                            let regridded_vinietting = SpatialEffect::new(detector.grid.clone(),self.nuv_vinietting.re_grid_values(detector.grid)).unwrap();
+                            detector.multiply(&regridded_vinietting);
                         }
                         Toggle::off => {println!("skipped nuv vinietting")}
                     }
-                    detector.to_electrons(self.config.simple_mode.0,
+                    detector.plain2_to_electrons(self.config.simple_mode.0,
                                           self.config.simple_mode.1,
                                           self.config.nuv_exposure_time,
                                           self.config.saturation_num_electrons as f64,

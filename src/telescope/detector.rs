@@ -3,8 +3,8 @@ use rand_distr::Poisson;
 use crate::geometry::*;
 use crate::gridded_data::{DetectorUnits, SpectralUnits, DATA2D};
 use crate::telescope::effects::SpatialEffect;
-use rand::RngExt;
-
+use rand::{random, RngExt};
+use rand_distr::{Normal};
 #[derive(Clone,Debug)]
 pub struct Detector {
     pub grid: GRID2D,
@@ -84,7 +84,7 @@ impl Detector {
 
                 if column + y_mod < self.grid.x_num() && row + x_mod < self.grid.y_num() {
                     let mut flux = 0.0;
-                    for psf in 0..1{//TODO: binned_psfs.len()
+                    for psf in 0..binned_psfs.len(){//TODO: binned_psfs.len()
                         flux += (binned_psfs[psf].1[column][row] as f64)*bands[psf]*scale
                     }
                     if (flux == 0.0) {
@@ -173,7 +173,85 @@ impl Detector {
         }
         self.unit = DetectorUnits::ADU;
     }
+    pub fn plain_to_electrons(&mut self, dark_current: f64, read_noise: f64, exposure_time:f64, saturation:f64,gain:f64){
+        assert_eq!(self.unit, DetectorUnits::AverageElectrons);
 
+        for y in 0..self.grid.y_num(){
+            for x in 0..self.grid.x_num(){
+                //println!("Data is {:?}, {:?}",self.data[y][x] ,dark_current);
+
+                let expected_source_electrons= (self.data[y][x])*exposure_time;//dark_current
+
+                self.data[y][x] = (expected_source_electrons/gain);
+
+            }
+        }
+        self.unit = DetectorUnits::ADU;
+    }
+
+    pub fn plain2_to_electrons(&mut self, dark_current: f64, read_noise: f64, exposure_time:f64, saturation:f64,gain:f64){
+        assert_eq!(self.unit, DetectorUnits::AverageElectrons);
+        let mut rng = rand::rng();
+        let mut read_noise = Normal::new(0., read_noise).unwrap(); //Poisson::new(read_noise).unwrap();
+        for y in 0..self.grid.y_num(){
+            for x in 0..self.grid.x_num(){
+                //println!("Data is {:?}, {:?}",self.data[y][x] ,dark_current);
+
+                let expected_source_electrons= (self.data[y][x]+dark_current )*exposure_time;//dark_current
+                //total_source = total 'expected' electrons from point sources + bakground
+               // let generator = Poisson::new(expected_source_electrons).unwrap();
+
+                let poisson_source_electrons= expected_source_electrons;//generator.sample(&mut rng);
+
+
+                // println!("sampled to {:?}",poisson_source_electrons);
+                let saturated_source_electrons = if  poisson_source_electrons > saturation{
+                    saturation
+                }else{
+                    poisson_source_electrons
+                };
+
+                //println!("saturated to {:?}",saturated_source_electrons);
+                let final_electrons = saturated_source_electrons + read_noise.sample(&mut rng);
+                // println!("final value is {:?}",final_electrons);
+                self.data[y][x] = (final_electrons/gain).floor();
+
+            }
+        }
+        self.unit = DetectorUnits::ADU;
+    }
+
+    pub fn new_to_electrons(&mut self, dark_current: f64, read_noise: f64, exposure_time:f64, saturation:f64,gain:f64){
+        assert_eq!(self.unit, DetectorUnits::AverageElectrons);
+        let mut rng = rand::rng();
+        let mut read_noise = Normal::new(0., read_noise).unwrap(); //Poisson::new(read_noise).unwrap();
+        for y in 0..self.grid.y_num(){
+            for x in 0..self.grid.x_num(){
+                //println!("Data is {:?}, {:?}",self.data[y][x] ,dark_current);
+
+                let expected_source_electrons= (self.data[y][x]+dark_current )*exposure_time;//dark_current
+                //total_source = total 'expected' electrons from point sources + bakground
+                let generator = Poisson::new(expected_source_electrons).unwrap();
+
+                let poisson_source_electrons= generator.sample(&mut rng);
+
+
+                // println!("sampled to {:?}",poisson_source_electrons);
+                let saturated_source_electrons = if  poisson_source_electrons > saturation{
+                    saturation
+                }else{
+                    poisson_source_electrons
+                };
+
+                //println!("saturated to {:?}",saturated_source_electrons);
+                let final_electrons = saturated_source_electrons + read_noise.sample(&mut rng);
+                // println!("final value is {:?}",final_electrons);
+                self.data[y][x] = (final_electrons/gain).floor();
+
+            }
+        }
+        self.unit = DetectorUnits::ADU;
+    }
 
     pub fn multiply_effect2(&mut self,effect:&SpatialEffect){
         for grid_point in 0..effect.grid().num_points(){
@@ -182,11 +260,22 @@ impl Detector {
 
                 let value = effect.value(&location);
                 let (x_mod,y_mod,x_res,y_res) = self.grid.fit_grid(&location,true).unwrap();
+                if self.data[y_mod][x_mod] > 0.{
+                    println!("Applied vinietting as: {:?}", value);
+                    println!("before: {:?}", self.data[y_mod][x_mod]);
+                }
                 self.data[y_mod][x_mod] *= value;
+                if self.data[y_mod][x_mod] > 10. {
+                    println!("after: {:?}", self.data[y_mod][x_mod]);
+                }
+
+
             }
 
         }
     }
+    
+    
 
 
     pub fn add_background(&mut self,effect:&SpatialEffect){

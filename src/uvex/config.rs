@@ -85,6 +85,8 @@ impl Default for Config{
             nuv_bands: vec![0., 270., 300.,400.,500.,700.,1000.],
             //nuv_bands: vec![0.,1000.],
 
+            /*
+
             nuv_psf_directories: vec!["/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/300 nm".to_string(),
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/400 nm".to_string(),
@@ -92,6 +94,8 @@ impl Default for Config{
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/700 nm".to_string(),
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/1000 nm".to_string()
             ],
+
+             */
 
             /*
             nuv_psf_directories: vec!["/Users/mayabasu/Desktop/NUV Out-of-Band-2/300 nm".to_string(),
@@ -103,18 +107,19 @@ impl Default for Config{
 
              */
 
-            /*
 
 
 
-            nuv_psf_directories: vec!["/Users/mayabasu/Desktop/NUV Out-of-Band-2/300nmblur_100mas".to_string(),
+
+            nuv_psf_directories: vec!["/Users/mayabasu/Desktop/uvex/NUV_PSF_100mas".to_string(),
+                                      "/Users/mayabasu/Desktop/NUV Out-of-Band-2/300nmblur_100mas".to_string(),
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/400nmblur_100mas".to_string(),
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/500nmblur_100mas".to_string(),
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/700nmblur_100mas".to_string(),
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/1000nmblur_100mas".to_string()
             ],
 
-             */
+
             fuv_psf_directory: "/Users/mayabasu/Desktop/uvex/FUV_PSF".to_string(),
             fuv_flatfield_illumination: (Toggle::on, "/Users/mayabasu/Desktop/uvex/vinietting/FUV_vignetting_model_4096.fits".to_string()),
             nuv_flatfield_illumination: (Toggle::on, "/Users/mayabasu/Desktop/uvex/vinietting/NUV_vignetting_model_4096.fits".to_string()),
@@ -142,7 +147,8 @@ impl Default for Config{
             pixel_size_um: 10.0,
             arcsec_per_pixel: 1.03,
             saturation_num_electrons: 15000,
-            simple_mode: (0.001, 2.),
+            simple_mode: (0.001, 3.),
+            //simple_mode: (0.000, 0.0),
             gain: 1.2, //Electrons per ADU, gets rounded down after applying this
             epd_cm: 75.,
             fuv_exposure_time: 900.,
@@ -157,7 +163,9 @@ impl Default for Config{
 }
 impl Config{
     pub fn area_cm(&self)->f64{
-        (self.epd_cm/2.).powi(2)* std::f64::consts::PI
+        //(self.epd_cm/2.).powi(2)* std::f64::consts::PI
+        //TODO
+        4417.86466911
     }
 
 
@@ -171,7 +179,7 @@ impl Config{
             //nuv_qe: (Toggle::on, "/Users/mayabasu/PycharmProjects/make_inputs/inputs/UVIM_NUV_QE.dat".to_string()),
             nuv_contamination: (Toggle::on, "/Users/mayabasu/Desktop/uvex/rustsim-2/UVIM_FUV_contamination.dat".to_string()),
             fuv_contamination: (Toggle::on, "/Users/mayabasu/Desktop/uvex/rustsim-2/UVIM_FUV_contamination.dat".to_string()),
-            nuv_bands: vec![0.,1000.],
+            nuv_bands: vec![0.,500.,1000.],
             //270., 300.,400.,500.,700.
 
             /*
@@ -187,11 +195,11 @@ impl Config{
 
 
             nuv_psf_directories: vec!["/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),
-                                      //  "/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),
+                                       // "/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),
                                      // "/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),
+                                      //"/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),
                                      // "/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),
-                                     // "/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),
-                                      //"/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string()
+                                      "/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string()
             ],
             fuv_psf_directory: "/Users/mayabasu/Desktop/uvex/FUV_PSF".to_string(),
             fuv_flatfield_illumination: (Toggle::on, "/Users/mayabasu/Desktop/uvex/vinietting/FUV_vignetting_model_4096.fits".to_string()),
