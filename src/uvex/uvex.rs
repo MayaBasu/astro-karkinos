@@ -2,8 +2,9 @@ use std::time::Instant;
 use egui::Grid;
 use rayon::iter::ParallelIterator;
 use rayon::iter::IntoParallelIterator;
+use crate::geometry::Corners;
 use crate::gridded_data::units::DetectorUnits;
-use crate::geometry::{CoordinateSystem, Point, ABSOLUTE_COORDINATES, GRID1D, GRID2D, SPECTRAL_GRID};
+use crate::geometry::{CoordinateSystem, InterpolationData, Point, ABSOLUTE_COORDINATES, GRID1D, GRID2D, SPECTRAL_GRID};
 use crate::geometry::Grid1DUnits::nm;
 use crate::gridded_data::{DATA1D, DATA2D};
 use crate::gridded_data::DetectorUnits::Electrons;
@@ -144,6 +145,7 @@ impl UVEX{
             nuv_psfs.push(psfs)
 
         }
+        /*
 
         let mut nuv_plain_psfs = PsfGrid::new(
             "in band 100 mas".to_string(),
@@ -151,7 +153,9 @@ impl UVEX{
             "/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),
             ("XFLD".to_string(), "YFLD".to_string()));
         nuv_plain_psfs.load_data_frames();
-        nuv_plain_psfs.gaussian_blur("/Users/mayabasu/Desktop/uvex/NUV_PSF_100mas".to_string(),1.);
+
+         */
+        //nuv_plain_psfs.gaussian_blur("/Users/mayabasu/Desktop/uvex/NUV_PSF_100mas".to_string(),1.);
 
 
 
@@ -395,6 +399,105 @@ impl UVEX{
 
     }
 
+    pub fn run_fast(&mut self, input:Input){
+
+
+        println!("Using Wavelength Dependent PSFs:");
+
+        let mut polychromatic_bandpasses_nuv = (0..self.nuv_bands.len()-1).map(|i|{
+            let lower = self.nuv_bands[i];
+            let upper = self.nuv_bands[i+1];
+            let directory = self.config.nuv_psf_directories[i].clone();
+            println!("Bin {i}: {lower} - {upper} nm -> {directory}");
+            SpectralResponse::square_wave(SPECTRAL_GRID,lower,upper)
+        }).collect::<Vec<SpectralResponse>>();
+        println!("Calculating band values for each spectra...");
+        let banded_spectra:Vec<Vec<f64>> = input.spectra.into_iter().map(|spectrum: Spectrum|{
+            let mut spectra = spectrum.apply_spectral_response(&self.nuv);
+            let bands:Vec<f64> = polychromatic_bandpasses_nuv.iter_mut().enumerate().map(|(i,bin)|{
+                let mut binned:Spectrum = spectra.clone().apply_spectral_response(bin); //photons/(s*cm^2*A)
+                let count_rate = binned.integrate()*self.config.area_cm();
+                count_rate
+            }).collect();
+            bands
+        }).collect();
+        println!("Done");
+
+
+        /*
+        make a vector of empty vectors, one for each line in the detector.
+        For each point, iterate through them
+        decide if it is in the detector.
+        find it's corner (skip for now, not sure how to do this)
+        find the modulii x, y
+        y mod determines which entry of the vector of lines it is added to. Included data is spectra
+        reference,and x position.
+        Then loop iterates over these lines
+
+         */
+
+        println!("Binning PSFs...");
+        /*
+        for (i,psf_grid) in self.nuv_psfs.iter().enumerate(){
+            let binned_grid = psf_grid.regrid_psfs_to_psf_grid(10);
+            let path = format!("/Users/mayabasu/Desktop/NUV Out-of-Band-2/binned_{i}");
+            binned_grid.write_to_dir(&path)
+        }
+         */
+
+
+        let binned_nuv_psfs:Vec<Vec<(usize,((usize,usize),Vec<Vec<f64>>))>> = self.nuv_psfs.iter().map(|psf_grid|{
+            psf_grid.regrid_psfs(10)
+        }).collect();
+
+        let chunk_height = 20;
+        let mut chunk:Vec<[f64;4096]> = (0..chunk_height).map(|_|{
+            [0.0;4096]
+        }).collect();
+
+        let mut result = Vec::with_capacity(4095);
+
+        let mut tot = 0;
+        let now = std::time::Instant::now();
+
+        for line in 0..4096 {
+            chunk.insert(0,[0.0;4096]);
+            //println!("{:?}", chunk.iter().flatten().sum::<f64>());
+            for point in &input.points[0..25] {
+
+
+                let interpolation_data: InterpolationData = self.nuv_psfs[0].grid.projected_interpolation_coefficients(point);
+                let corners = match interpolation_data.corners {
+                    Corners::Four(a, b, c, d) => { vec![a, b, c, d] }
+                    Corners::Two(a, b) => { vec![a, b] }
+                    Corners::One(a) => { vec![a] }
+                };
+
+               // if self.detectors[0].grid.is_point_inside_with_margin(point, 0.) {
+                    //println!("point{:?}", point);
+                    tot += 1;
+
+                    let (x_mod, y_mod, x_residual, y_residual) = self.detectors[0].grid.project_fit(point, false);
+                    for (i, band) in self.nuv_psfs.iter().enumerate() {
+                        for corner in &corners {
+                            let psf = binned_nuv_psfs[i][*corner].1.1.clone();
+                            for y in (0..psf.len()) {
+                                for x in (0..psf.len()) {
+                                    chunk[y][(x + x_mod)%4096] += psf[y][x]
+                                }
+                            }
+                        }
+                    }
+
+                //}
+            }
+            result.push(chunk.pop().unwrap())
+        }
+
+        println!("sum is {:?}, {:?}, time: {:?}, lines: {:?},, total{:?}", result.iter().flatten().sum::<f64>(),tot, now.elapsed().as_millis(), result.len(),tot)
+    }
+
+
 
     pub fn run(&mut self, mut background:SpatialEffect, channel:Channel, input: Input) {
         let now = std::time::Instant::now();
@@ -429,6 +532,7 @@ impl UVEX{
 
 
 
+
        // let background_spectrum:Spectrum = input.spectra[1].clone();
        // let background_bandpass = match channel{
        //     Channel::FUV => {background_spectrum.apply_spectral_response(&mut self.fuv).integrate()}
@@ -438,6 +542,7 @@ impl UVEX{
         println!("area {:?}",self.config.area_cm());
         println!("BACKGROUND {:?}", background.value_at_index(0));
         println!("{:?} point sources with {:?} distinct spectra", input.points.len(), input.spectra.len());
+
         let start = Instant::now();
         println!("NUV spectral bins:");
 
@@ -484,7 +589,7 @@ impl UVEX{
                                     .iter()
                                     .map(|(NUV_PSF_grid)|{
                                         let psf = NUV_PSF_grid.interpolated_psf(point);
-                                        println!("PSF norm: {:?}",psf.iter().flatten().sum::<f64>());
+                                       // println!("PSF norm: {:?}",psf.iter().flatten().sum::<f64>());
                                         psf
 
                                     }).collect();

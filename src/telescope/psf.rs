@@ -6,10 +6,9 @@ use serde::{Deserialize, Serialize};
 use uvex_fitrs::{Fits, FitsData, FitsDataArray, Hdu, HeaderValue};
 use ndarray::*;
 use convolve2d::{convolve2d, DynamicMatrix, Matrix};
-
-
-
-
+use crate::gridded_data::DetectorUnits;
+use crate::gridded_data::DATA2D;
+use crate::telescope::{Detector, SpatialEffect};
 
 #[derive(Debug,Clone,Serialize)]
 pub struct PSF {
@@ -88,7 +87,7 @@ impl PSF {
         let data:Vec<f64> = self.data.clone().iter().map(|x|x.to_owned()).flatten().collect();
         let data= data.iter().map(|x| *x).collect();
         //println!("Trying to write to {path}, {:?}",data);
-        let mut primary_hdu = Hdu::new(&[64, 64], data);
+        let mut primary_hdu = Hdu::new(&[self.data[0].len(), self.data.len()], data);
         //println!("Done making hdu");
         let [x,y] = self.center.to_absolute().values();
         //println!("x,y,{x} {y}");
@@ -139,6 +138,100 @@ impl PSF {
         let kernel = DynamicMatrix::new(kernel[0].len(), kernel.len(), flat_kernel).unwrap();
         let output = convolve2d(&data, &kernel);
         output.get_data().to_vec()
+    }
+
+    pub fn regrid_to_psf(&self,scale:usize)->PSF{
+        let sum1:f64 = self.data.iter().flatten().sum();
+
+        let old_grid = GRID2D::new(
+            [self.x_pixels,self.y_pixels],
+            [1.0/(scale as f64), 1.0/(scale as f64)],
+            Point::zero(&ABSOLUTE_COORDINATES),
+            0.001,
+            ABSOLUTE_COORDINATES);
+
+        let corner = old_grid.locate(0);
+
+        let new_x = ((self.x_pixels as f64)/scale as f64).ceil() as usize;
+        let new_y = ((self.y_pixels as f64)/scale as f64).ceil() as usize;
+
+        let new_grid = GRID2D::new(
+            [new_x + 1,new_y + 1],
+            [1.0, 1.0],
+            Point::zero(&ABSOLUTE_COORDINATES),
+            0.001,
+            ABSOLUTE_COORDINATES);
+
+        //let mut blank_binned_psf = Detector::initialize(new_grid, DetectorUnits::AverageElectrons);
+        
+
+
+
+
+        //let original_psf = SpatialEffect::new(original_grid, self.data.clone());
+        let new_values = new_grid.bin_up_patch(&corner, &self.data, scale).1;
+        
+        let sum2:f64 = new_values.iter().flatten().sum();
+        let warning = format!("values were {:?} {:?}",sum1, sum2);
+        assert!((sum1-sum2).abs()< 0.001, "{}", &warning);
+        PSF{
+            path: Default::default(),
+            data: new_values,
+            x_pixels: new_x,
+            y_pixels: new_y,
+            center: self.center,
+            size: (0.,0.),//TODO remove size
+        }
+        
+         
+    }
+
+
+
+    pub fn regrid(&self,scale:usize)->((usize,usize),Vec<Vec<f64>>){
+        let sum1:f64 = self.data.iter().flatten().sum();
+
+        let old_grid = GRID2D::new(
+            [self.x_pixels,self.y_pixels],
+            [1.0/(scale as f64), 1.0/(scale as f64)],
+            Point::zero(&ABSOLUTE_COORDINATES),
+            0.001,
+            ABSOLUTE_COORDINATES);
+
+        let corner = old_grid.locate(0);
+
+        let new_x = 13;//((self.x_pixels as f64)/scale as f64).ceil() as usize;
+        let new_y = 13;//((self.y_pixels as f64)/scale as f64).ceil() as usize;
+
+        let new_grid = GRID2D::new(
+            [new_x + 1,new_y + 1],
+            [1.0, 1.0],
+            Point::zero(&ABSOLUTE_COORDINATES),
+            0.001,
+            ABSOLUTE_COORDINATES);
+
+        //let mut blank_binned_psf = Detector::initialize(new_grid, DetectorUnits::AverageElectrons);
+        new_grid.bin_up_patch(&corner, &self.data, scale)
+
+
+
+
+        //let original_psf = SpatialEffect::new(original_grid, self.data.clone());
+        //let new_values = blank_binned_psf.data;
+        /*
+        let sum2:f64 = new_values.iter().flatten().sum();
+        let warning = format!("values were {:?} {:?}",sum1, sum2);
+        assert!((sum1-sum2).abs()< 0.001, "{}", &warning);
+        PSF{
+            path: Default::default(),
+            data: new_values,
+            x_pixels: new_x,
+            y_pixels: new_y,
+            center: self.center,
+            size: (0.,0.),//TODO remove size
+        }
+        
+         */
     }
 
 
@@ -341,9 +434,44 @@ impl PsfGrid{
                 center: psf.center.clone(),
                 size: psf.size.clone()
             };
+
             new_grid.data.push((*i,new_psf.clone()));
             new_psf.write_file(path.as_str(), self.center_fits_keys.clone());
 
+        }
+
+    }
+
+    pub fn write_to_dir(&self, dir_path:&str){
+        for (i,psf) in self.data.clone(){
+            let path = format!("{dir_path}/psf_{i}.fits");
+            psf.write_file(path.as_str(), self.center_fits_keys.clone());
+        }
+    }
+
+
+    pub fn regrid_psfs(&self,scale:usize)-> Vec<(usize,((usize,usize),Vec<Vec<f64>>))>{
+
+        let regridded_psfs:Vec<(usize,((usize,usize),Vec<Vec<f64>>))> = self.data.iter().map(|(i,psf)|{
+            (*i,psf.regrid(scale))
+        }).collect();
+        regridded_psfs
+
+    }
+
+
+    pub fn regrid_psfs_to_psf_grid(&self,scale:usize)-> PsfGrid{
+
+        let regridded_psfs:Vec<(usize,PSF)> = self.data.iter().map(|(i,psf)|{
+            (*i,psf.regrid_to_psf(scale))
+        }).collect();
+        PsfGrid{
+            label: "".to_string(),
+            grid: self.grid,
+            data: regridded_psfs,
+            valid: false,
+            directory_path: "".to_string(),
+            center_fits_keys: self.center_fits_keys.clone(),
         }
 
     }

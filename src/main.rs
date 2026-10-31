@@ -23,47 +23,70 @@ pub mod gridded_data;
 
 
 pub fn main() {
-
-
-
-
-
-/*
-
-    let x = 1.;
-    println!("{:?} in um",x);
-    println!("{:?} in um",x*um.to_um());
-    println!("{:?} in a",x*um.to_angstrom());
-    println!("{:?} in nm",x*um.to_nm());
-
-    println!("{:?} in um",x*um.to_angstrom()*angstroms.to_um());
-    println!("{:?} in um",x*um.to_nm()*nm.to_um());
-    println!("{:?} in um",x*nm.to_angstrom()*angstroms.to_nm());
-    println!("{:?}",nm.conversion_factor(angstroms));
-    println!("{:?}",nm.conversion_factor(um));
-    println!("{:?}",um.conversion_factor(nm));
-    println!("{:?}",um.conversion_factor(angstroms));
-    println!("{:?}",angstroms.conversion_factor(um));
-    println!("{:?}",angstroms.conversion_factor(nm));
-
-
-
-
-
     let mut config = Config::default();
-    config.nuv_flatfield_illumination.0 = off;
+    //config.nuv_flatfield_illumination.0 = off;
     let mut uvex = UVEX::load(config.clone());
+    let persei = make_input("/Users/mayabasu/Desktop/norm_cat/field.dat","/Users/mayabasu/Desktop/norm_cat/parsed");
 
-    let spectrum = Spectrum::load("/Users/mayabasu/Desktop/onestar/flat.dat", 0.0001).unwrap();
-    let spectrum = spectrum.regrid(&SPECTRAL_GRID);
-    let small = GRID1D::new(1000,100.,1000.,0.0001,nm);
+    /*
+    let input = Input{
+        points: vec![],
+        weights: vec![],
+        spec_refs: vec![],
+        spectra: vec![],
+    };
+    
+     */
+    uvex.run_fast(persei);
+    panic!();
 
-    println!("spectruma after: {:?}", spectrum.apply_spectral_response(&uvex.nuv).regrid(&small));
-    let cr = spectrum.countrate(&uvex.nuv.regrid(&SPECTRAL_GRID));
-    println!("COUNTRATE: {:?}",cr);
-    println!("COUNTRATE: {:?}",cr*config.area_cm()*300.*0.7557460729579156);
 
- */
+
+
+
+
+
+
+
+
+
+
+    /*
+
+        let x = 1.;
+        println!("{:?} in um",x);
+        println!("{:?} in um",x*um.to_um());
+        println!("{:?} in a",x*um.to_angstrom());
+        println!("{:?} in nm",x*um.to_nm());
+
+        println!("{:?} in um",x*um.to_angstrom()*angstroms.to_um());
+        println!("{:?} in um",x*um.to_nm()*nm.to_um());
+        println!("{:?} in um",x*nm.to_angstrom()*angstroms.to_nm());
+        println!("{:?}",nm.conversion_factor(angstroms));
+        println!("{:?}",nm.conversion_factor(um));
+        println!("{:?}",um.conversion_factor(nm));
+        println!("{:?}",um.conversion_factor(angstroms));
+        println!("{:?}",angstroms.conversion_factor(um));
+        println!("{:?}",angstroms.conversion_factor(nm));
+
+
+
+
+
+        let mut config = Config::default();
+        config.nuv_flatfield_illumination.0 = off;
+        let mut uvex = UVEX::load(config.clone());
+
+        let spectrum = Spectrum::load("/Users/mayabasu/Desktop/onestar/flat.dat", 0.0001).unwrap();
+        let spectrum = spectrum.regrid(&SPECTRAL_GRID);
+        let small = GRID1D::new(1000,100.,1000.,0.0001,nm);
+
+        println!("spectruma after: {:?}", spectrum.apply_spectral_response(&uvex.nuv).regrid(&small));
+        let cr = spectrum.countrate(&uvex.nuv.regrid(&SPECTRAL_GRID));
+        println!("COUNTRATE: {:?}",cr);
+        println!("COUNTRATE: {:?}",cr*config.area_cm()*300.*0.7557460729579156);
+
+     */
 
 
 
@@ -84,7 +107,7 @@ pub fn main() {
     config.nuv_flatfield_illumination.0 = on;
 
     //let norminput = make_input("/Users/mayabasu/Desktop/testcat/field.dat",
-    //                           "/Users/mayabasu/Desktop/onestar/flat.dat");
+     //                          "/Users/mayabasu/Desktop/onestar/flat.dat");
     let mut plot = Plot::new();
 
 
@@ -141,8 +164,11 @@ pub fn main() {
      */
 
 
+    let persei = make_input("/Users/mayabasu/Desktop/norm_cat/field.dat","/Users/mayabasu/Desktop/norm_cat/parsed");
 
-    uvex.run(background, Channel::NUV, onestarinput);
+
+
+    uvex.run(background, Channel::NUV, persei);
     for detector in uvex.detectors{
         detector.grid.plot_outline_2(&mut plot, "red".to_string(), "det".to_string())
     }

@@ -643,7 +643,9 @@ impl GRID2D {
 
 
 #[derive(Debug)]
-pub struct InterpolationData {
+pub struct 
+
+InterpolationData {
     pub corners: Corners,
     pub coefficients: Vec<Regular>,
     pub normalization: Regular,
