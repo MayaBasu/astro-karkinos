@@ -1,7 +1,10 @@
 use std::time::Instant;
 use egui::Grid;
+use rand::distr::Distribution;
+use rand_distr::{Normal, Poisson};
 use rayon::iter::ParallelIterator;
 use rayon::iter::IntoParallelIterator;
+use uvex_fitrs::{Fits, Hdu};
 use crate::geometry::Corners;
 use crate::gridded_data::units::DetectorUnits;
 use crate::geometry::{CoordinateSystem, InterpolationData, Point, ABSOLUTE_COORDINATES, GRID1D, GRID2D, SPECTRAL_GRID};
@@ -375,6 +378,7 @@ impl UVEX{
         //println!("Spectrum 2 is {:?}", spectra[1]);
         //println!("NUV: {:?}",self.nuv);
         let nuv_bands:Vec<f64> = spectra.into_iter().map(|spectrum|{
+
             spectrum.apply_spectral_response(&mut self.nuv).integrate()
         }).collect();
         println!("NUV BANDS ARE {:?}", nuv_bands);
@@ -385,7 +389,7 @@ impl UVEX{
         }).collect();
 
         let scaled_corners:Vec<Vec<f64>> = scaled_corners.chunks(2).map(|c|c.to_vec()).collect();
-
+        println!("Scaled corners: {:?}",scaled_corners);
         //TODO add this to config instead
 
         let background_grid = GRID2D::new(
@@ -395,46 +399,16 @@ impl UVEX{
             0.000000000001,
             ABSOLUTE_COORDINATES);
 
-        SpatialEffect::new(background_grid,scaled_corners).unwrap()
+
+        let background = SpatialEffect::new(background_grid,scaled_corners).unwrap();
+        println!("{:?}", background.data);
+        background
 
     }
+    pub fn run_fast_oversampled(&mut self, input:Input, background: SpatialEffect, run_name:&str){
 
-    pub fn run_fast(&mut self, input:Input){
+        println!("{:?} point sources", input.points.len());
 
-
-        println!("Using Wavelength Dependent PSFs:");
-
-        let mut polychromatic_bandpasses_nuv = (0..self.nuv_bands.len()-1).map(|i|{
-            let lower = self.nuv_bands[i];
-            let upper = self.nuv_bands[i+1];
-            let directory = self.config.nuv_psf_directories[i].clone();
-            println!("Bin {i}: {lower} - {upper} nm -> {directory}");
-            SpectralResponse::square_wave(SPECTRAL_GRID,lower,upper)
-        }).collect::<Vec<SpectralResponse>>();
-        println!("Calculating band values for each spectra...");
-        let banded_spectra:Vec<Vec<f64>> = input.spectra.into_iter().map(|spectrum: Spectrum|{
-            let mut spectra = spectrum.apply_spectral_response(&self.nuv);
-            let bands:Vec<f64> = polychromatic_bandpasses_nuv.iter_mut().enumerate().map(|(i,bin)|{
-                let mut binned:Spectrum = spectra.clone().apply_spectral_response(bin); //photons/(s*cm^2*A)
-                let count_rate = binned.integrate()*self.config.area_cm();
-                count_rate
-            }).collect();
-            bands
-        }).collect();
-        println!("Done");
-
-
-        /*
-        make a vector of empty vectors, one for each line in the detector.
-        For each point, iterate through them
-        decide if it is in the detector.
-        find it's corner (skip for now, not sure how to do this)
-        find the modulii x, y
-        y mod determines which entry of the vector of lines it is added to. Included data is spectra
-        reference,and x position.
-        Then loop iterates over these lines
-
-         */
 
         println!("Binning PSFs...");
         /*
@@ -446,55 +420,334 @@ impl UVEX{
          */
 
 
-        let binned_nuv_psfs:Vec<Vec<(usize,((usize,usize),Vec<Vec<f64>>))>> = self.nuv_psfs.iter().map(|psf_grid|{
-            psf_grid.regrid_psfs(10)
+        let mut oversampled_PSFs = Vec::new();
+
+        let patch_size = 16;
+        for band in 0..self.nuv_bands.len()-1{
+            let mut band_oversampled = Vec::new();
+            println!("Binning band {band}, {:?} - {:?}", self.config.nuv_bands[band], self.config.nuv_bands[band+1]);
+            for j in -5isize..6 {
+                let mut row = Vec::new();
+                for i in -5isize..6 {
+                    println!("{j} {i}");
+
+                    let regridded_psf_grid = self.nuv_psfs[band].clone().regrid_psfs_to_subpixel(10,patch_size,i,j);
+                    //println!("psf grid {:?}",regridded_psf_grid);
+                    row.push(regridded_psf_grid)
+                }
+                band_oversampled.push(row)
+            }
+            oversampled_PSFs.push(band_oversampled)
+
+        }
+
+
+        let binned_nuv_psfs:Vec<Vec<Vec<Vec<f64>>>> = self.nuv_psfs.clone().into_iter().map(|psf_grid|{
+            psf_grid.regrid_psfs_centered(10,patch_size)
         }).collect();
 
-        let chunk_height = 20;
-        let mut chunk:Vec<[f64;4096]> = (0..chunk_height).map(|_|{
-            [0.0;4096]
+
+
+        println!("Generating polychromatic bands...");
+        //Make square waves spanning each of the nuv bands.
+        let mut polychromatic_bandpasses_nuv = (0..self.nuv_bands.len()-1).map(|i|{
+            let lower = self.nuv_bands[i];
+            let upper = self.nuv_bands[i+1];
+            let directory = self.config.nuv_psf_directories[i].clone();
+            println!("Bin {i}: {lower} - {upper} nm -> {directory}");
+            SpectralResponse::square_wave(SPECTRAL_GRID,lower,upper)
+        }).collect::<Vec<SpectralResponse>>();
+
+
+        println!("Calculating band values for each spectra...");
+        //Find the magnitude of each spectrum in each of the bands
+        let banded_spectra:Vec<Vec<f64>> = input.spectra.into_iter().map(|spectrum: Spectrum|{
+            let mut spectra = spectrum.apply_spectral_response(&self.nuv);
+            let bands:Vec<f64> = polychromatic_bandpasses_nuv.iter_mut().enumerate().map(|(i,bin)|{
+                let mut binned:Spectrum = spectra.clone().apply_spectral_response(bin); //photons/(s*cm^2*A)
+                let count_rate = binned.integrate()*self.config.area_cm();
+                //println!("Count rate is {:?}", count_rate);
+                // println!("Counts {:?}", count_rate);
+                count_rate
+            }).collect();
+            bands
         }).collect();
 
-        let mut result = Vec::with_capacity(4095);
-
-        let mut tot = 0;
-        let now = std::time::Instant::now();
-
-        for line in 0..4096 {
-            chunk.insert(0,[0.0;4096]);
-            //println!("{:?}", chunk.iter().flatten().sum::<f64>());
-            for point in &input.points[0..25] {
 
 
-                let interpolation_data: InterpolationData = self.nuv_psfs[0].grid.projected_interpolation_coefficients(point);
-                let corners = match interpolation_data.corners {
-                    Corners::Four(a, b, c, d) => { vec![a, b, c, d] }
-                    Corners::Two(a, b) => { vec![a, b] }
-                    Corners::One(a) => { vec![a] }
-                };
+        println!("Collecting point sources into rows...");
+        /*
+        For each point source we decide if it is in the central detector
+        Then, if so, we fit it to the detector grid.
+        It is added to a vector 'rows' based on what it's y modulus is
+        we store it's x position, weight and spectral ref in this vector element
+         */
 
-               // if self.detectors[0].grid.is_point_inside_with_margin(point, 0.) {
+        (0..9).into_par_iter().for_each(|detector|{
+            let mut written_lines = 0;
+            let mut lines = Vec::with_capacity(4096);//TODO
+            (0..4096).for_each(|_| lines.push(vec![]));
+            let detector_grid:GRID2D = self.detectors[detector].grid;
+            let shift = Point::new(patch_size as f64/(2.*60.*60.),patch_size as f64/(2.*60.*60.),&ABSOLUTE_COORDINATES);
+
+            for (i,point) in input.points.iter().enumerate(){
+                if detector_grid.is_point_inside_with_margin(&(point-&shift), 15.0){
+                    let (x,y,x_mod,y_mod) = detector_grid.fit_grid(&(point-&shift),true).unwrap();
+                    println!("x, y mod: {:?}  {:?}", x_mod, y_mod);
+                    let y_mod =( (y_mod*10.).round() as isize + 10) as usize;
+                    let x_mod = ((x_mod*10.).round() as isize + 10) as usize;
+                    println!("X, Y mod: {:?}  {:?}", x_mod, y_mod);
+                    let interpolation_data: InterpolationData = self.nuv_psfs[0].grid.projected_interpolation_coefficients(point);
+                    lines[y].push((x, x_mod,y_mod, interpolation_data,input.weights[i], input.spec_refs[i]))
+                }
+            }
+            //println!("LINES {:?}", lines);
+
+
+
+            let chunk_height = 20;
+            let mut chunk:Vec<[f64;4096]> = (0..chunk_height).map(|_|{
+                [0.0;4096]
+            }).collect();
+
+            let mut result = Vec::with_capacity(4096);
+
+            let mut tot = 0;
+            let now = std::time::Instant::now();
+
+            for points in lines {
+                chunk.push([0.0;4096]);
+                //println!("{:?}", chunk.iter().flatten().sum::<f64>());
+                for (x_pos,x_mod,y_mod,interpolation_data, weight, spec_ref) in points{
+
+
+
+                    let corners = match interpolation_data.corners {
+                        Corners::Four(a, b, c, d) => { vec![a, b, c, d] }
+                        Corners::Two(a, b) => { vec![a, b] }
+                        Corners::One(a) => { vec![a] }
+                    };
+                    // println!("corners: {corners:?}");
+
+                    // if self.detectors[0].grid.is_point_inside_with_margin(point, 0.) {
                     //println!("point{:?}", point);
                     tot += 1;
 
-                    let (x_mod, y_mod, x_residual, y_residual) = self.detectors[0].grid.project_fit(point, false);
-                    for (i, band) in self.nuv_psfs.iter().enumerate() {
-                        for corner in &corners {
-                            let psf = binned_nuv_psfs[i][*corner].1.1.clone();
+                    //let (x_mod, y_mod, x_residual, y_residual) = self.detectors[0].grid.project_fit(point, false);
+                    for (band_number, band) in self.nuv_psfs.iter().enumerate() {
+                        // println!("huh {:?}",banded_spectra[spec_ref][i]);
+                        let mut sum = 0.0;
+                        for (corner_index,&corner) in corners.iter().enumerate() {
+                            // println!("i: {i}, corner{corner}");
+                            let psf =&oversampled_PSFs[band_number][y_mod][x_mod][corner];
+                            //println!("PSF {:?}", psf);
                             for y in (0..psf.len()) {
                                 for x in (0..psf.len()) {
-                                    chunk[y][(x + x_mod)%4096] += psf[y][x]
+                                    //println!("ADDING point");
+
+                                    sum += psf[y][x];
+                                    chunk[y][(x_pos + x)%4096] +=
+                                        (psf[y][x])*
+                                            interpolation_data.coefficients[corner_index].value()*
+                                            weight*
+                                            banded_spectra[spec_ref][band_number]/(interpolation_data.normalization.value())
                                 }
                             }
                         }
+                        // println!("sum is {:?}", sum)
                     }
 
-                //}
+                    //}
+                }
+                self.add_line(&mut result,&mut chunk.remove(0), &background);
+                written_lines += 1;
+                //result.push(chunk.pop().unwrap())
             }
-            result.push(chunk.pop().unwrap())
-        }
 
-        println!("sum is {:?}, {:?}, time: {:?}, lines: {:?},, total{:?}", result.iter().flatten().sum::<f64>(),tot, now.elapsed().as_millis(), result.len(),tot)
+            println!("Detector: {:?}sum is {:?}, {:?}, time: {:?}, lines: {:?},, total{:?}, written lines {:?}", detector,result.iter().flatten().sum::<f64>(),tot, now.elapsed().as_millis(), result.len(),tot,written_lines);
+            let shape = [4096 as usize,result.len()];
+
+            let primary_hdu = Hdu::new(&shape, result.into_iter().flatten().map(|x|x).collect());
+            Fits::create(format!("/Users/mayabasu/Desktop/Output/{run_name}_{detector}.fits"), primary_hdu).expect(
+                &format!("Failed to write data to FITS "));
+        });
+    }
+
+
+
+
+
+    pub fn run_fast(&mut self, input:Input, background: SpatialEffect, run_name:&str){
+
+        println!("{:?} point sources", input.points.len());
+        let patch_size = 15;
+
+        println!("Binning PSFs...");
+        /*
+        for (i,psf_grid) in self.nuv_psfs.iter().enumerate(){
+            let binned_grid = psf_grid.regrid_psfs_to_psf_grid(10);
+            let path = format!("/Users/mayabasu/Desktop/NUV Out-of-Band-2/binned_{i}");
+            binned_grid.write_to_dir(&path)
+        }
+         */
+        let binned_nuv_psfs:Vec<Vec<Vec<Vec<f64>>>> = self.nuv_psfs.clone().into_iter().map(|psf_grid|{
+            psf_grid.regrid_psfs_centered(10,patch_size)
+        }).collect();
+
+
+
+        println!("Generating polychromatic bands...");
+        //Make square waves spanning each of the nuv bands.
+        let mut polychromatic_bandpasses_nuv = (0..self.nuv_bands.len()-1).map(|i|{
+            let lower = self.nuv_bands[i];
+            let upper = self.nuv_bands[i+1];
+            let directory = self.config.nuv_psf_directories[i].clone();
+            println!("Bin {i}: {lower} - {upper} nm -> {directory}");
+            SpectralResponse::square_wave(SPECTRAL_GRID,lower,upper)
+        }).collect::<Vec<SpectralResponse>>();
+
+
+        println!("Calculating band values for each spectra...");
+        //Find the magnitude of each spectrum in each of the bands
+        let banded_spectra:Vec<Vec<f64>> = input.spectra.into_iter().map(|spectrum: Spectrum|{
+            let mut spectra = spectrum.apply_spectral_response(&self.nuv);
+            let bands:Vec<f64> = polychromatic_bandpasses_nuv.iter_mut().enumerate().map(|(i,bin)|{
+                let mut binned:Spectrum = spectra.clone().apply_spectral_response(bin); //photons/(s*cm^2*A)
+                let count_rate = binned.integrate()*self.config.area_cm();
+                //println!("Count rate is {:?}", count_rate);
+               // println!("Counts {:?}", count_rate);
+                count_rate
+            }).collect();
+            bands
+        }).collect();
+
+
+
+        println!("Collecting point sources into rows...");
+        /*
+        For each point source we decide if it is in the central detector
+        Then, if so, we fit it to the detector grid.
+        It is added to a vector 'rows' based on what it's y modulus is
+        we store it's x position, weight and spectral ref in this vector element
+         */
+
+        (0..9).into_par_iter().for_each(|i|{
+            let mut written_lines = 0;
+            let mut lines = Vec::with_capacity(4096);//TODO
+            (0..4096).for_each(|_| lines.push(vec![]));
+            let detector_grid:GRID2D = self.detectors[i].grid;
+            let shift = Point::new(patch_size as f64/(2.*60.*60.),patch_size as f64/(2.*60.*60.),&ABSOLUTE_COORDINATES);
+
+            for (i,point) in input.points.iter().enumerate(){
+                if detector_grid.is_point_inside_with_margin(&(point-&shift), 15.0){
+                    let (x,y,_,_) = detector_grid.fit_grid(&(point-&shift),false).unwrap();
+                    let interpolation_data: InterpolationData = self.nuv_psfs[0].grid.projected_interpolation_coefficients(point);
+                    lines[y].push((x, interpolation_data,input.weights[i], input.spec_refs[i]))
+                }
+            }
+            //println!("LINES {:?}", lines);
+
+
+
+            let chunk_height = 20;
+            let mut chunk:Vec<[f64;4096]> = (0..chunk_height).map(|_|{
+                [0.0;4096]
+            }).collect();
+
+            let mut result = Vec::with_capacity(4096);
+
+            let mut tot = 0;
+            let now = std::time::Instant::now();
+
+            for points in lines {
+                chunk.push([0.0;4096]);
+                //println!("{:?}", chunk.iter().flatten().sum::<f64>());
+                for (x_pos,interpolation_data, weight, spec_ref) in points{
+
+
+
+                    let corners = match interpolation_data.corners {
+                        Corners::Four(a, b, c, d) => { vec![a, b, c, d] }
+                        Corners::Two(a, b) => { vec![a, b] }
+                        Corners::One(a) => { vec![a] }
+                    };
+                    // println!("corners: {corners:?}");
+
+                    // if self.detectors[0].grid.is_point_inside_with_margin(point, 0.) {
+                    //println!("point{:?}", point);
+                    tot += 1;
+
+                    //let (x_mod, y_mod, x_residual, y_residual) = self.detectors[0].grid.project_fit(point, false);
+                    for (i, band) in self.nuv_psfs.iter().enumerate() {
+                        // println!("huh {:?}",banded_spectra[spec_ref][i]);
+                        let mut sum = 0.0;
+                        for (corner_index,&corner) in corners.iter().enumerate() {
+                            // println!("i: {i}, corner{corner}");
+                            let psf =& binned_nuv_psfs[i][corner];
+                            for y in (0..psf.len()) {
+                                for x in (0..psf.len()) {
+
+                                    sum += psf[y][x];
+                                    chunk[y][(x_pos + x)%4096] +=
+                                        (psf[y][x])*
+                                            interpolation_data.coefficients[corner_index].value()*
+                                            weight*
+                                            banded_spectra[spec_ref][i]/(interpolation_data.normalization.value())
+                                }
+                            }
+                        }
+                        // println!("sum is {:?}", sum)
+                    }
+
+                    //}
+                }
+                self.add_line(&mut result,&mut chunk.remove(0), &background);
+                written_lines += 1;
+                //result.push(chunk.pop().unwrap())
+            }
+
+            println!("sum is {:?}, {:?}, time: {:?}, lines: {:?},, total{:?}, written lines {:?}", result.iter().flatten().sum::<f64>(),tot, now.elapsed().as_millis(), result.len(),tot,written_lines);
+            let shape = [4096 as usize,result.len()];
+
+            let primary_hdu = Hdu::new(&shape, result.into_iter().flatten().map(|x|x).collect());
+            Fits::create(format!("/Users/mayabasu/Desktop/Output/{run_name}_{i}.fits"), primary_hdu).expect(
+                &format!("Failed to write data to FITS "));
+        });
+    }
+
+    pub fn add_line(&self, mut result: &mut Vec<[f64; 4096]>, line:&mut [f64;4096], background:&SpatialEffect){
+        let mut rng = rand::rng();  //TODO move to self instead of recreate?
+
+
+        let mut read_noise = Normal::new(0., self.config.read_noise).unwrap();
+
+        for i in 0..line.len(){
+            let background = background.value(&background.grid.center()); //TODO: fix to spatially varying
+            //println!("background: {:?}", background*self.config.area_cm()*self.config.nuv_exposure_time);
+
+
+
+            let mut read_noise = read_noise.sample(&mut rng);
+            if read_noise < 0.0{
+                read_noise = 0.0
+            }
+
+
+            let mut counts = (background*self.config.area_cm() + line[i]+self.config.dark_current)*self.config.nuv_exposure_time;
+            if counts > 0.{
+                //counts = counts
+                counts = Poisson::new(counts)
+                    .unwrap()
+                    .sample(&mut rng);
+            }
+
+
+
+            line[i] =
+                ((counts)/self.config.gain).floor();
+        };
+        result.push(*line)
+
     }
 
 
@@ -659,14 +912,14 @@ impl UVEX{
                         }
                         Toggle::off => {println!("skipped nuv vinietting")}
                     }
-                    detector.plain2_to_electrons(self.config.simple_mode.0,
-                                          self.config.simple_mode.1,
+                    detector.plain2_to_electrons(self.config.dark_current,
+                                                 self.config.read_noise,
                                           self.config.nuv_exposure_time,
                                           self.config.saturation_num_electrons as f64,
                                           self.config.gain);
 
 
-                    detector.write_to_fits(&format!("/Users/mayabasu/Desktop/Output/one_star_{i}.fits"))
+                    detector.write_to_fits(&format!("/Users/mayabasu/Desktop/Output/one_star_oversampled_{i}.fits"))
 
 
                     /*

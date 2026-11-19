@@ -181,7 +181,7 @@ pub fn make_input(field_path:&str, spectrum_dir:&str)-> Input{
     }
     //-0.56, -0.06
     let points:Vec<Point> = x_list.iter().zip(y_list).map(|(&x, y)|{
-        Point::new(x/(60.*60.)-0.56,y/(60.*60.)-0.06,&ABSOLUTE_COORDINATES)
+        Point::new(x/(60.*60.*1.03)-0.56,y/(60.*60.*1.03)-0.06,&ABSOLUTE_COORDINATES)
     }).collect();
 
     Input{

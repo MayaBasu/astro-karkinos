@@ -200,8 +200,8 @@ impl PSF {
 
         let corner = old_grid.locate(0);
 
-        let new_x = 13;//((self.x_pixels as f64)/scale as f64).ceil() as usize;
-        let new_y = 13;//((self.y_pixels as f64)/scale as f64).ceil() as usize;
+        let new_x = 15;//((self.x_pixels as f64)/scale as f64).ceil() as usize;
+        let new_y = 15;//((self.y_pixels as f64)/scale as f64).ceil() as usize;
 
         let new_grid = GRID2D::new(
             [new_x + 1,new_y + 1],
@@ -232,6 +232,71 @@ impl PSF {
         }
         
          */
+    }
+
+    pub fn regrid_to_subpixel(self,scale:usize, patch_size:usize, x_sub: isize, y_sub: isize)-> Vec<Vec<f64>>{
+        let subpixel_center = Point::new(x_sub as f64/(scale as f64), y_sub as f64 /(scale as f64), &ABSOLUTE_COORDINATES);
+        //println!("subpixel center is: {:?}",subpixel_center);
+
+
+        let old_grid = GRID2D::new(
+            [self.x_pixels,self.y_pixels],
+            [1.0/(scale as f64), 1.0/(scale as f64)],
+            subpixel_center,
+            0.001,
+            ABSOLUTE_COORDINATES);
+        let new_grid = GRID2D::new(
+            [patch_size,patch_size],
+            [1.0, 1.0],
+            Point::zero(&ABSOLUTE_COORDINATES),
+            0.001,
+            ABSOLUTE_COORDINATES);
+       // println!("which is at {:?}", new_grid.fit_grid(&subpixel_center,true));
+
+        let mut binned_psf = SpatialEffect::constant(new_grid, 0.0).unwrap();
+        let unbinned_psf = SpatialEffect::new(old_grid, self.data).unwrap();
+        for i in (0..unbinned_psf.grid.num_points()){
+            let location = unbinned_psf.grid.locate(i);
+            let [x,y] = unbinned_psf.grid.xy_indices(i);
+            let value = unbinned_psf.data[y][x];
+            let (target_x, target_y,_,_) = binned_psf.grid.fit_grid(&location,false).unwrap();
+            //println!("targets: {target_x} {target_y} {value}");
+            binned_psf.data[target_y][target_x] += value;
+        }
+        //println!("after: {:?}",binned_psf.data);
+
+        binned_psf.data
+    }
+
+
+    pub fn regrid_centered(self,scale:usize, patch_size:usize)-> Vec<Vec<f64>>{
+        //println!("before: {:?}",self.data);
+        let old_grid = GRID2D::new(
+            [self.x_pixels,self.y_pixels],
+            [1.0/(scale as f64), 1.0/(scale as f64)],
+            Point::zero(&ABSOLUTE_COORDINATES),
+            0.001,
+            ABSOLUTE_COORDINATES);
+        let new_grid = GRID2D::new(
+            [patch_size,patch_size],
+            [1.0, 1.0],
+            Point::zero(&ABSOLUTE_COORDINATES),
+            0.001,
+            ABSOLUTE_COORDINATES);
+
+        let mut binned_psf = SpatialEffect::constant(new_grid, 0.0).unwrap();
+        let unbinned_psf = SpatialEffect::new(old_grid, self.data).unwrap();
+        for i in (0..unbinned_psf.grid.num_points()){
+            let location = unbinned_psf.grid.locate(i);
+            let [x,y] = unbinned_psf.grid.xy_indices(i);
+            let value = unbinned_psf.data[y][x];
+            let (target_x, target_y,_,_) = binned_psf.grid.fit_grid(&location,false).unwrap();
+            //println!("targets: {target_x} {target_y} {value}");
+            binned_psf.data[target_y][target_x] += value;
+        }
+        //println!("after: {:?}",binned_psf.data);
+
+        binned_psf.data
     }
 
 
@@ -453,11 +518,69 @@ impl PsfGrid{
     pub fn regrid_psfs(&self,scale:usize)-> Vec<(usize,((usize,usize),Vec<Vec<f64>>))>{
 
         let regridded_psfs:Vec<(usize,((usize,usize),Vec<Vec<f64>>))> = self.data.iter().map(|(i,psf)|{
+            let new_psf = psf.regrid(scale);
+            assert!((new_psf.1.iter().flatten().sum::<f64>()-1.) < 0.001);
             (*i,psf.regrid(scale))
         }).collect();
         regridded_psfs
 
     }
+
+
+    pub fn regrid_psfs_to_subpixel(self,scale:usize, patch_size:usize, sub_x:isize,sub_y:isize)-> Vec<Vec<Vec<f64>>>{
+
+        let regridded_psfs:Vec<Vec<Vec<f64>>> = self.data.into_iter().map(|(i,psf)|{
+            let new_psf = psf.regrid_to_subpixel(scale, patch_size, sub_x,sub_y);
+            assert!((new_psf.iter().flatten().sum::<f64>()-1.) < 0.001);
+            new_psf
+        }).collect();
+        regridded_psfs
+
+    }
+
+
+    pub fn regrid_psfs_grided_to_subpixel(self,scale:usize, patch_size:usize, sub_x:isize,sub_y:isize)-> PsfGrid{
+
+        let regridded_psfs:Vec<(usize,PSF)> = self.data.into_iter().map(|(i,psf)|{
+            let new_psf = psf.clone().regrid_to_subpixel(scale, patch_size, sub_x,sub_y);
+            let new_psf = PSF{
+                path: Default::default(),
+                data: new_psf,
+                x_pixels: patch_size,
+                y_pixels: patch_size,
+                center: psf.center,
+                size: (0.0, 0.0),
+            };
+            (i,new_psf)
+        }).collect();
+        PsfGrid{
+            label: "".to_string(),
+            grid: self.grid,
+            data: regridded_psfs,
+            valid: false,
+            directory_path: "".to_string(),
+            center_fits_keys: self.center_fits_keys.clone(),
+        }
+
+    }
+
+
+
+
+
+
+    pub fn regrid_psfs_centered(self,scale:usize, patch_size:usize)-> Vec<Vec<Vec<f64>>>{
+
+        let regridded_psfs:Vec<Vec<Vec<f64>>> = self.data.into_iter().map(|(i,psf)|{
+            let new_psf = psf.regrid_centered(scale, patch_size);
+            assert!((new_psf.iter().flatten().sum::<f64>()-1.) < 0.001);
+            new_psf
+        }).collect();
+        regridded_psfs
+
+    }
+
+
 
 
     pub fn regrid_psfs_to_psf_grid(&self,scale:usize)-> PsfGrid{

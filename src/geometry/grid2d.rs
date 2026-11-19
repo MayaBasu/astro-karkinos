@@ -99,7 +99,6 @@ impl GRID2D {
             (y_num-1) as f64 *y_step,
             self.coordinate_system())
     }
-    
     pub fn x_size(&self)->f64{self.size().x.value()}
     pub fn y_size(&self)->f64{self.size().y.value()}
     pub fn snap_precision(&self)-> f64{
@@ -167,17 +166,6 @@ impl GRID2D {
         let half_grid_size = self.size()/2.0;
         let delta = point - &self.center();
 
-        /*
-        println!(" is point inside?:\n\
-        center was at {:?} \n
-        half grid size {:?} \n\
-
-\n
-        point {:?},
-        \
-        ",self.center(),half_grid_size, point);
-
-         */
         if (delta.x.value().abs() > (half_grid_size.x + self.snap_precision).value())|
             (delta.y.value().abs() > (half_grid_size.y + self.snap_precision).value()){
            // println!("verdict: NO");

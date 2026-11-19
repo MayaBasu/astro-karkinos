@@ -11,8 +11,10 @@ use crate::gridded_data::{DATA1D, DATA2D};
 use crate::gridded_data::DetectorUnits::{AverageElectrons, Electrons};
 use crate::uvex::config::Config;
 use crate::uvex::config::Toggle::{off, on};
+use crate::uvex::oversample::run_oversample_demo;
 use crate::uvex::psf_bin_test;
 use crate::uvex::uvex::{Channel, UVEX};
+use crate::uvex::uvex::Channel::NUV;
 
 pub mod geometry;
 pub mod uvex;
@@ -23,22 +25,132 @@ pub mod gridded_data;
 
 
 pub fn main() {
+    let background_grid = GRID2D::new(
+        [2,2],
+        [4.,4.],
+        Point::new(-0.56, -0.06, &ABSOLUTE_COORDINATES),
+        0.000000000001,
+        ABSOLUTE_COORDINATES);
+
+
+
+    run_oversample_demo();
+    panic!();
+    
+    
+    
+    
+    
+    
     let mut config = Config::default();
     //config.nuv_flatfield_illumination.0 = off;
     let mut uvex = UVEX::load(config.clone());
-    let persei = make_input("/Users/mayabasu/Desktop/norm_cat/field.dat","/Users/mayabasu/Desktop/norm_cat/parsed");
 
-    /*
-    let input = Input{
+
+
+
+    //let persei = make_input("/Users/mayabasu/Desktop/norm_cat/field.dat","/Users/mayabasu/Desktop/norm_cat/parsed");
+
+   // let persei_zodi = Spectrum::load("/Users/mayabasu/Desktop/backgrounds/persei_zodiac.dat",0.0001).unwrap();
+
+   // let persei_galactic = Spectrum::load("/Users/mayabasu/Desktop/backgrounds/persei_galactic.dat",0.0001).unwrap();
+   // let persei_background = uvex.make_nuv_background([vec![1.,1.],
+    //                                              vec![1.,1.],
+     //                                             vec![1.,1.],
+     //                                             vec![1.,1.]], vec![persei_zodi,persei_galactic]);
+
+
+
+    //let onestar = make_input("/Users/mayabasu/Desktop/onestar/field.dat","/Users/mayabasu/Desktop/onestar/parsed");
+
+
+   /* let empty_input = Input{
         points: vec![],
         weights: vec![],
         spec_refs: vec![],
         spectra: vec![],
     };
-    
-     */
-    uvex.run_fast(persei);
+
+    */
+
+    let spectrum = Spectrum::load("/Users/mayabasu/Desktop/onestar/flat.dat", 0.0001).unwrap();
+    let spectrum = spectrum.regrid(&SPECTRAL_GRID);
+
+   // println!("spectruma after: {:?}", spectrum.apply_spectral_response(&uvex.nuv).regrid(&small));
+    let cr = spectrum.countrate(&uvex.nuv.regrid(&SPECTRAL_GRID));
+    //println!("CR: {:?}",cr);
+
+    let onestar = Input{
+        points: vec![Point::new(-0.56, -0.06, &ABSOLUTE_COORDINATES)],
+        weights: vec![1.],
+        spec_refs: vec![0],
+        spectra: vec![spectrum.clone()],
+    };
+
+    let blank_background = SpatialEffect::constant(background_grid,0.0).unwrap();
+
+
+
+    uvex.run_fast_oversampled(onestar, blank_background, "onestar_oversampled");
+    /*
+
+    let threestar = Input{
+
+        points: vec![Point::new(-0.56, -0.06, &ABSOLUTE_COORDINATES),
+                     Point::new(-0.56 + 20./(60.*60.*1.03), -0.06 -20./(60.*60.*1.03), &ABSOLUTE_COORDINATES),
+                     Point::new(-0.56+13./(60.*60.*1.03), -0.06+ 15./(60.*60.*1.03), &ABSOLUTE_COORDINATES)],
+        weights: vec![1.,1.,1.],
+        spec_refs: vec![0,0,0],
+        spectra: vec![spectrum],
+
+    };
+
+
+    let lmcwest = make_input("/Users/mayabasu/Desktop/LMC west/field.dat","/Users/mayabasu/Desktop/LMC west/parsed");
+    let lmc_zodi = Spectrum::load("/Users/mayabasu/Desktop/backgrounds/lmc_zodiac.dat",0.0001).unwrap();
+    let lmc_galactic = Spectrum::load("/Users/mayabasu/Desktop/backgrounds/lmc_galactic.dat",0.0001).unwrap();
+
+    let lmc_background = uvex.make_nuv_background([vec![1.,1.],
+                                                  vec![1.,1.],
+                                                  vec![1.,1.],
+                                                  vec![1.,1.]], vec![lmc_zodi,lmc_galactic]);
+
+
+
+    let spec0 = Spectrum::load("/Users/mayabasu/Desktop/LMC west/zodiac.dat",0.0001).unwrap();
+    let cr = spec0.clone().countrate(&uvex.nuv.regrid(&SPECTRAL_GRID));
+    println!("COUNTRATE: {:?}",cr);
+    println!("COUNTRATE: {:?}",cr*config.area_cm()*300.);
+
+    let spec1 = Spectrum::load("/Users/mayabasu/Desktop/LMC west/galactic.dat",0.0001).unwrap();
+    let cr = spec1.clone().countrate(&uvex.nuv.regrid(&SPECTRAL_GRID));
+    println!("COUNTRATE: {:?}",cr);
+    println!("COUNTRATE: {:?}",cr*config.area_cm()*300.);
+    println!("making background");
+
+
+    let background = uvex.make_nuv_background([vec![1.,1.],
+                                                  vec![1.,1.],
+                                                  vec![1.,1.],
+                                                  vec![1.,1.]], vec![spec0,spec1]);
+
+    println!("{:?}",background);
+    let background_grid = GRID2D::new(
+        [2,2],
+        [4.,4.],
+        Point::new(-0.56, -0.06, &ABSOLUTE_COORDINATES),
+        0.000000000001,
+        ABSOLUTE_COORDINATES);
+
+    let blank_background = SpatialEffect::constant(background_grid,0.0).unwrap();
+
+
+    //uvex.run_fast(persei,persei_background, "persei");
+    //uvex.run_fast(lmcwest,lmc_background, "lmc");
     panic!();
+    panic!();
+
+     */
 
 
 
@@ -97,6 +209,8 @@ pub fn main() {
 
 
     //psf_bin_test::test();
+
+    /*
 
 
 
@@ -173,6 +287,8 @@ pub fn main() {
         detector.grid.plot_outline_2(&mut plot, "red".to_string(), "det".to_string())
     }
     plot.show("sekjhfsef").unwrap();
+
+     */
 
 
 

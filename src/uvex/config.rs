@@ -60,7 +60,10 @@ pub struct Config{
     pub saturation_num_electrons: usize,
 
     // dark current (e/s per pixel), read noise (electrons rms)
-    pub simple_mode: (f64,f64),
+    //pub simple_mode: (f64,f64),
+
+    pub dark_current: f64,
+    pub read_noise:f64,
 
     pub gain: f64,
 
@@ -83,9 +86,9 @@ impl Default for Config{
             nuv_contamination: (Toggle::on, "/Users/mayabasu/Desktop/CALDB_Rust/UVIM_NUV_contamination.dat".to_string()),
             fuv_contamination: (Toggle::on, "/Users/mayabasu/Desktop/CALDB_Rust/UVIM_FUV_contamination.dat".to_string()),
             nuv_bands: vec![0., 270., 300.,400.,500.,700.,1000.],
-            //nuv_bands: vec![0.,1000.],
+            //nuv_bands: vec![100.,1000.],
 
-            /*
+
 
             nuv_psf_directories: vec!["/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/300 nm".to_string(),
@@ -95,7 +98,7 @@ impl Default for Config{
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/1000 nm".to_string()
             ],
 
-             */
+
 
             /*
             nuv_psf_directories: vec!["/Users/mayabasu/Desktop/NUV Out-of-Band-2/300 nm".to_string(),
@@ -108,7 +111,7 @@ impl Default for Config{
              */
 
 
-
+/*
 
 
             nuv_psf_directories: vec!["/Users/mayabasu/Desktop/uvex/NUV_PSF_100mas".to_string(),
@@ -118,6 +121,8 @@ impl Default for Config{
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/700nmblur_100mas".to_string(),
                                       "/Users/mayabasu/Desktop/NUV Out-of-Band-2/1000nmblur_100mas".to_string()
             ],
+
+ */
 
 
             fuv_psf_directory: "/Users/mayabasu/Desktop/uvex/FUV_PSF".to_string(),
@@ -147,7 +152,8 @@ impl Default for Config{
             pixel_size_um: 10.0,
             arcsec_per_pixel: 1.03,
             saturation_num_electrons: 15000,
-            simple_mode: (0.001, 3.),
+            dark_current: 0.000,
+            read_noise: 0.,
             //simple_mode: (0.000, 0.0),
             gain: 1.2, //Electrons per ADU, gets rounded down after applying this
             epd_cm: 75.,
@@ -228,7 +234,8 @@ impl Config{
             pixel_size_um: 10.0,
             arcsec_per_pixel: 1.03,
             saturation_num_electrons: 15000,
-            simple_mode: (0., 0.),
+            dark_current: 0.001,
+            read_noise: 3.,
             gain: 1.2, //Electrons per ADU, gets rounded down after applying this
             epd_cm: 75.,
             fuv_exposure_time: 900.,
